@@ -39,6 +39,8 @@ from keepreadable.persistence.models import (
 )
 from keepreadable.utilities.clock import utcnow
 
+KEEP = object()
+
 
 def _archive(model: ArchiveModel) -> Archive:
     return Archive(
@@ -214,6 +216,14 @@ class ArchiveRepository:
         self.session.flush()
         return True
 
+    def update_root(self, archive_id: int, root_path: str) -> Archive | None:
+        model = self.session.get(ArchiveModel, archive_id)
+        if model is None:
+            return None
+        model.root_path = root_path
+        self.session.flush()
+        return _archive(model)
+
     def find_by_fingerprint(self, fingerprint: str) -> Archive | None:
         model = self.session.scalar(
             select(ArchiveModel).where(ArchiveModel.root_fingerprint == fingerprint)
@@ -366,6 +376,10 @@ class FileRecordRepository:
         ids: dict[str, int] = {path: record_id for path, record_id in rows}
         return [ids[record.normalized_path] for record in records]
 
+    def get(self, file_record_id: int) -> FileRecord | None:
+        model = self.session.get(FileRecordModel, file_record_id)
+        return _file_record(model) if model else None
+
     def get_by_normalized_path(self, archive_id: int, normalized_path: str) -> FileRecord | None:
         model = self.session.scalar(
             select(FileRecordModel).where(
@@ -394,6 +408,23 @@ class FileRecordRepository:
         )
         for model in models:
             yield _file_record(model)
+
+    def next_pending_batch(self, archive_id: int, run_id: int, limit: int) -> list[FileRecord]:
+        has_observation = exists().where(
+            ObservationModel.file_record_id == FileRecordModel.id,
+            ObservationModel.audit_run_id == run_id,
+        )
+        models = self.session.scalars(
+            select(FileRecordModel)
+            .where(
+                FileRecordModel.archive_id == archive_id,
+                FileRecordModel.last_seen_audit_id == run_id,
+                ~has_observation,
+            )
+            .order_by(FileRecordModel.normalized_path)
+            .limit(limit)
+        )
+        return [_file_record(model) for model in models]
 
     def count_pending_for_run(self, archive_id: int, run_id: int) -> int:
         has_observation = exists().where(
@@ -425,6 +456,65 @@ class FileRecordRepository:
             model.present = False
         self.session.flush()
         return [_file_record(model) for model in models]
+
+    def update_after_observation(
+        self, updates: list[tuple[int, HealthState, object, object]]
+    ) -> None:
+        for record_id, health, sha256, verified_at in updates:
+            model = self.session.get(FileRecordModel, record_id)
+            if model is None:
+                continue
+            model.last_health = health.value
+            model.present = True
+            if sha256 is not KEEP:
+                model.last_sha256 = sha256 if isinstance(sha256, str) else None
+            if verified_at is not KEEP:
+                model.last_deep_verified_at = (
+                    verified_at if isinstance(verified_at, datetime) else None
+                )
+        self.session.flush()
+
+    def find_new_in_run_by_hash(
+        self, archive_id: int, run_id: int, sha256: str, size: int
+    ) -> list[FileRecord]:
+        models = self.session.scalars(
+            select(FileRecordModel)
+            .where(
+                FileRecordModel.archive_id == archive_id,
+                FileRecordModel.first_seen_audit_id == run_id,
+                FileRecordModel.last_sha256 == sha256,
+                FileRecordModel.size == size,
+                FileRecordModel.present,
+            )
+            .order_by(FileRecordModel.normalized_path)
+        )
+        return [_file_record(model) for model in models]
+
+    def duplicate_groups(self, archive_id: int) -> list[tuple[str, int, list[FileRecord]]]:
+        models = list(
+            self.session.scalars(
+                select(FileRecordModel)
+                .where(
+                    FileRecordModel.archive_id == archive_id,
+                    FileRecordModel.present,
+                    FileRecordModel.last_sha256.is_not(None),
+                )
+                .order_by(
+                    FileRecordModel.last_sha256,
+                    FileRecordModel.size,
+                    FileRecordModel.normalized_path,
+                )
+            )
+        )
+        grouped: dict[tuple[str, int], list[FileRecord]] = {}
+        for model in models:
+            assert model.last_sha256 is not None
+            grouped.setdefault((model.last_sha256, model.size), []).append(_file_record(model))
+        return [
+            (sha256, size, records)
+            for (sha256, size), records in grouped.items()
+            if len(records) > 1
+        ]
 
     def find_by_sha256_and_size(self, archive_id: int, sha256: str, size: int) -> list[FileRecord]:
         models = self.session.scalars(
@@ -550,6 +640,20 @@ class ObservationRepository:
         self.session.flush()
         return [_observation(model) for model in models]
 
+    def latest_for_files(self, file_record_ids: list[int]) -> dict[int, Observation]:
+        if not file_record_ids:
+            return {}
+        latest_ids = (
+            select(func.max(ObservationModel.id).label("id"))
+            .where(ObservationModel.file_record_id.in_(file_record_ids))
+            .group_by(ObservationModel.file_record_id)
+            .subquery()
+        )
+        models = self.session.scalars(
+            select(ObservationModel).join(latest_ids, ObservationModel.id == latest_ids.c.id)
+        )
+        return {model.file_record_id: _observation(model) for model in models}
+
     def latest_for_file(self, file_record_id: int) -> Observation | None:
         model = self.session.scalar(
             select(ObservationModel)
@@ -566,6 +670,17 @@ class ObservationRepository:
             .order_by(ObservationModel.created_at.desc(), ObservationModel.id.desc())
         )
         return [_observation(model) for model in models]
+
+    def update_change_kind(self, file_record_id: int, run_id: int, change_kind: ChangeKind) -> None:
+        model = self.session.scalar(
+            select(ObservationModel).where(
+                ObservationModel.file_record_id == file_record_id,
+                ObservationModel.audit_run_id == run_id,
+            )
+        )
+        if model is not None:
+            model.change_kind = change_kind.value
+            self.session.flush()
 
     def count_for_run(self, run_id: int) -> int:
         return int(
@@ -648,6 +763,73 @@ class FindingRepository:
         self.session.flush()
         return _finding(model)
 
+    def open_for_files(
+        self, file_record_ids: builtins.list[int]
+    ) -> dict[int, builtins.list[Finding]]:
+        if not file_record_ids:
+            return {}
+        states = [
+            FindingState.OPEN.value,
+            FindingState.ACKNOWLEDGED.value,
+            FindingState.IGNORED.value,
+        ]
+        models = self.session.scalars(
+            select(FindingModel).where(
+                FindingModel.file_record_id.in_(file_record_ids),
+                FindingModel.state.in_(states),
+            )
+        )
+        output: dict[int, builtins.list[Finding]] = {record_id: [] for record_id in file_record_ids}
+        for model in models:
+            if model.file_record_id is not None:
+                output[model.file_record_id].append(_finding(model))
+        return output
+
+    def resolve_ids(self, finding_ids: builtins.list[int], resolved_at: datetime) -> None:
+        if not finding_ids:
+            return
+        models = self.session.scalars(select(FindingModel).where(FindingModel.id.in_(finding_ids)))
+        for model in models:
+            model.state = FindingState.RESOLVED.value
+            model.resolved_at = resolved_at
+        self.session.flush()
+
+    def update_batch(self, findings: builtins.list[Finding]) -> None:
+        for finding in findings:
+            if finding.id is None:
+                continue
+            model = self.session.get(FindingModel, finding.id)
+            if model is not None:
+                model.evidence = finding.evidence
+                model.title = finding.title
+                model.description = finding.description
+        self.session.flush()
+
+    def list_for_archive(
+        self,
+        archive_id: int,
+        *,
+        severity: FindingSeverity | None = None,
+        category: FindingCategory | None = None,
+        state: FindingState | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> builtins.list[Finding]:
+        return self.list(
+            archive_id=archive_id,
+            severity=severity,
+            category=category,
+            state=state,
+        )[offset : offset + limit]
+
+    def latest_findings(self, archive_id: int) -> builtins.list[Finding]:
+        findings = self.list(archive_id=archive_id)
+        return [
+            finding
+            for finding in findings
+            if finding.state in {FindingState.OPEN, FindingState.ACKNOWLEDGED}
+        ]
+
     def counts_by_severity(self, archive_id: int) -> dict[FindingSeverity, int]:
         rows = self.session.execute(
             select(FindingModel.severity, func.count(FindingModel.id))
@@ -658,7 +840,7 @@ class FindingRepository:
         return {FindingSeverity(severity): int(count) for severity, count in rows}
 
     def open_for_file(self, file_record_id: int) -> builtins.list[Finding]:
-        return self.list(file_record_id=file_record_id, state=FindingState.OPEN)
+        return self.open_for_files([file_record_id]).get(file_record_id, [])
 
 
 class GeneratedCopyRepository:

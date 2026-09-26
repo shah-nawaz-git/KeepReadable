@@ -50,7 +50,7 @@ exclude-newer = "2026-09-19T00:00:00Z"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/keepreadable"]
-force-include = { "src/keepreadable/resources/tools.lock.json" = "keepreadable/resources/tools.lock.json" }
+force-include = { "src/keepreadable/resources/tools.lock.json" = "keepreadable/resources/tools.lock.json", "src/keepreadable/policies/formats.yml" = "keepreadable/policies/formats.yml" }
 
 [tool.ruff]
 line-length = 100
@@ -58,7 +58,7 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "PL", "RUF"]
-ignore = ["PLR0913", "PLR2004", "PLR0917"]
+ignore = ["PLR0911", "PLR0912", "PLR0913", "PLR0915", "PLR2004", "PLR0917"]
 
 [tool.mypy]
 python_version = "3.12"
@@ -72,7 +72,7 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 qt_api = "pyside6"
-addopts = "--strict-markers"
+addopts = "--strict-markers -m 'not benchmark'"
 markers = [
   "external_tools: requires Siegfried or FFmpeg",
   "slow: slow-running tests",

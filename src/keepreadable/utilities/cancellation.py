@@ -8,9 +8,15 @@ class OperationCancelled(Exception):
 class CancellationToken:
     def __init__(self) -> None:
         self._event = Event()
+        self._reason: str | None = None
 
-    def cancel(self) -> None:
+    def cancel(self, reason: str | None = None) -> None:
+        self._reason = reason
         self._event.set()
+
+    @property
+    def reason(self) -> str | None:
+        return self._reason
 
     @property
     def is_cancelled(self) -> bool:

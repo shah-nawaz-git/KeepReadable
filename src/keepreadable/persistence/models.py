@@ -75,6 +75,7 @@ class ObservationModel(Base):
     __table_args__ = (
         Index("ix_observations_file_created", "file_record_id", "created_at"),
         Index("ix_observations_audit_run", "audit_run_id"),
+        Index("ix_observations_run_file", "audit_run_id", "file_record_id"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)

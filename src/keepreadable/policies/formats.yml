@@ -1,0 +1,112 @@
+policy_version: "1.0"
+formats:
+  "fmt/39": &legacy_office
+    status: review
+    reason_code: legacy_binary_office
+    explanation: "Legacy Microsoft Office binary format. Current software still opens it, often with reduced fidelity; a compatibility copy in a current format can make it easier to access."
+    source_label: "Library of Congress – Sustainability of Digital Formats"
+    source_url: "https://www.loc.gov/preservation/digital/formats/fdd/browse_list.shtml"
+    reviewed_at: "2026-09-26"
+  "fmt/40": *legacy_office
+  "fmt/55": *legacy_office
+  "fmt/56": *legacy_office
+  "fmt/57": *legacy_office
+  "fmt/58": *legacy_office
+  "fmt/59": *legacy_office
+  "fmt/61": *legacy_office
+  "fmt/62": *legacy_office
+  "fmt/125": *legacy_office
+  "fmt/126": *legacy_office
+  "x-fmt/17": *legacy_office
+  "x-fmt/45": *legacy_office
+  "x-fmt/87": *legacy_office
+
+  "fmt/131": &windows_media
+    status: review
+    reason_code: windows_media
+    explanation: "Windows Media format. A compatibility copy in a widely supported current format can make the content easier to access with different software."
+    source_label: "Library of Congress – Sustainability of Digital Formats"
+    source_url: "https://www.loc.gov/preservation/digital/formats/fdd/browse_list.shtml"
+    reviewed_at: "2026-09-26"
+  "fmt/132": *windows_media
+  "fmt/133": *windows_media
+  "fmt/441": *windows_media
+  "fmt/584": *windows_media
+  "fmt/589": *windows_media
+
+  "x-fmt/183": &real_media
+    status: review
+    reason_code: real_media
+    explanation: "RealMedia format. A compatibility copy in a widely supported current format can make the content easier to access with different software."
+    source_label: "Library of Congress – Sustainability of Digital Formats"
+    source_url: "https://www.loc.gov/preservation/digital/formats/fdd/browse_list.shtml"
+    reviewed_at: "2026-09-26"
+  "x-fmt/190": *real_media
+  "x-fmt/278": *real_media
+  "fmt/404": *real_media
+
+  "fmt/104": &flash
+    status: review
+    reason_code: adobe_flash
+    explanation: "Adobe Flash format. Current desktop software may not provide direct playback; a compatibility copy can make the content easier to review."
+    source_label: "Library of Congress – Sustainability of Digital Formats"
+    source_url: "https://www.loc.gov/preservation/digital/formats/fdd/browse_list.shtml"
+    reviewed_at: "2026-09-26"
+  "fmt/105": *flash
+  "fmt/106": *flash
+  "fmt/107": *flash
+  "fmt/108": *flash
+  "fmt/109": *flash
+  "fmt/110": *flash
+  "x-fmt/382": *flash
+
+  "x-fmt/44": &wordperfect
+    status: review
+    reason_code: wordperfect
+    explanation: "WordPerfect format. A compatibility copy in a current document format can make text and basic structure easier to access with different software."
+    source_label: "Library of Congress – Sustainability of Digital Formats"
+    source_url: "https://www.loc.gov/preservation/digital/formats/fdd/browse_list.shtml"
+    reviewed_at: "2026-09-26"
+  "x-fmt/203": *wordperfect
+  "x-fmt/393": *wordperfect
+  "x-fmt/394": *wordperfect
+  "fmt/892": *wordperfect
+  "fmt/949": *wordperfect
+  "fmt/1220": *wordperfect
+  "fmt/1221": *wordperfect
+  "fmt/1222": *wordperfect
+  "fmt/1424": *wordperfect
+
+  "x-fmt/114": &lotus
+    status: review
+    reason_code: lotus_123
+    explanation: "Lotus 1-2-3 format. A compatibility copy in a current spreadsheet format can make cells and formulas easier to access with different software."
+    source_label: "Library of Congress – Sustainability of Digital Formats"
+    source_url: "https://www.loc.gov/preservation/digital/formats/fdd/browse_list.shtml"
+    reviewed_at: "2026-09-26"
+  "x-fmt/115": *lotus
+  "x-fmt/116": *lotus
+  "x-fmt/117": *lotus
+  "x-fmt/212": *lotus
+  "fmt/1452": *lotus
+  "fmt/1453": *lotus
+
+  "fmt/163": &works
+    status: review
+    reason_code: microsoft_works
+    explanation: "Microsoft Works format. A compatibility copy in a current document, spreadsheet, or database format can make the content easier to access with different software."
+    source_label: "Library of Congress – Sustainability of Digital Formats"
+    source_url: "https://www.loc.gov/preservation/digital/formats/fdd/browse_list.shtml"
+    reviewed_at: "2026-09-26"
+  "fmt/166": *works
+  "fmt/169": *works
+  "fmt/219": *works
+  "fmt/220": *works
+  "fmt/221": *works
+  "fmt/233": *works
+  "fmt/258": *works
+  "fmt/901": *works
+  "x-fmt/118": *works
+  "x-fmt/120": *works
+  "x-fmt/344": *works
+  "x-fmt/345": *works
