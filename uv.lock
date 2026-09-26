@@ -315,6 +315,7 @@ name = "keepreadable"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "defusedxml" },
     { name = "jinja2" },
     { name = "openpyxl" },
     { name = "pikepdf" },
@@ -347,6 +348,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "defusedxml", specifier = ">=0.7" },
     { name = "jinja2", specifier = ">=3.1" },
     { name = "openpyxl", specifier = ">=3.1" },
     { name = "pikepdf", specifier = ">=8" },

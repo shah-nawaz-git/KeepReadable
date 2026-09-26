@@ -23,6 +23,7 @@ dependencies = [
   "platformdirs>=4",
   "reportlab>=4",
   "Jinja2>=3.1",
+  "defusedxml>=0.7",
 ]
 
 [project.scripts]
@@ -65,7 +66,7 @@ strict = true
 files = ["src"]
 
 [[tool.mypy.overrides]]
-module = ["pikepdf.*", "docx.*", "pptx.*", "openpyxl.*", "reportlab.*"]
+module = ["pikepdf.*", "docx.*", "pptx.*", "openpyxl.*", "reportlab.*", "defusedxml.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
