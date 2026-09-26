@@ -3,7 +3,7 @@ import os
 import platform
 import time
 from collections.abc import Callable
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from contextlib import suppress
 from dataclasses import dataclass
 from datetime import datetime
@@ -92,6 +92,7 @@ class AuditProgress:
     run_id: int
     stage: AuditStage
     files_discovered: int
+    files_total_estimate: int
     files_processed: int
     files_failed: int
     files_skipped: int
@@ -416,20 +417,62 @@ class AuditEngine:
                 for record in records
             }
             identification = self._identify_batch(records, plans, root, run, token)
+            latest_started: list[str | None] = [None]
+            started_lock = Lock()
+
+            def process_record(
+                record: FileRecord,
+                current_plans: dict[int, WorkPlan] = plans,
+                prior_observations: dict[int, Observation] = previous,
+                identification_results: dict[int, IdentificationOutcome] = identification,
+                path_state: list[str | None] = latest_started,
+                path_lock: Lock = started_lock,
+            ) -> FileWorkResult:
+                with path_lock:
+                    path_state[0] = record.relative_path
+                return self._work_one(
+                    record,
+                    root,
+                    current_plans[record.id or 0],
+                    prior_observations.get(record.id or 0),
+                    identification_results.get(record.id or 0),
+                    token,
+                )
+
             with ThreadPoolExecutor(max_workers=max(1, self.settings.worker_count)) as executor:
-                futures = [
-                    executor.submit(
-                        self._work_one,
-                        record,
-                        root,
-                        plans[record.id or 0],
-                        previous.get(record.id or 0),
-                        identification.get(record.id or 0),
-                        token,
+                futures = {
+                    executor.submit(process_record, record): index
+                    for index, record in enumerate(records)
+                }
+                pending = set(futures)
+                completed_in_batch = 0
+                last_progress_emit = time.monotonic()
+                ordered_results: list[FileWorkResult | None] = [None] * len(records)
+                while pending:
+                    completed, pending = wait(
+                        pending,
+                        timeout=0.25,
+                        return_when=FIRST_COMPLETED,
                     )
-                    for record in records
-                ]
-                work_results = [future.result() for future in futures]
+                    for future in completed:
+                        ordered_results[futures[future]] = future.result()
+                    completed_in_batch += len(completed)
+                    current_time = time.monotonic()
+                    if callback is not None and current_time - last_progress_emit >= 0.25:
+                        with started_lock:
+                            current_path = latest_started[0]
+                        self._emit(
+                            run,
+                            AuditStage.PROCESSING,
+                            started,
+                            estimator,
+                            current_path,
+                            callback,
+                            files_processed_override=(run.files_processed + completed_in_batch),
+                        )
+                        last_progress_emit = current_time
+                        token.raise_if_cancelled()
+                work_results = [result for result in ordered_results if result is not None]
             if any(result.vanished for result in work_results) and not is_root_available(root):
                 return self._interrupt(run, "archive_unavailable")
             classified = [
@@ -796,26 +839,51 @@ class AuditEngine:
         additions: list[Finding] = []
         identification_failures = int(run.resume_state.get("identification_failures", 0))
         if identification_failures:
+            missing = self.siegfried is None
+            title = (
+                "Siegfried is not installed"
+                if missing
+                else "Format identification was unavailable during this audit"
+            )
+            observed = (
+                f"Siegfried is not installed; {identification_failures} files were not identified"
+                if missing
+                else (
+                    f"Format identification was unavailable during this audit; "
+                    f"{identification_failures} files were not identified"
+                )
+            )
             additions.append(
                 self._run_finding(
                     run,
                     now,
-                    "Siegfried is not installed",
-                    (
-                        f"Siegfried is not installed; {identification_failures} "
-                        "files were not identified"
-                    ),
+                    title,
+                    observed,
                     {"count": identification_failures, "tool": "siegfried"},
                 )
             )
         ffmpeg_failures = int(run.resume_state.get("ffmpeg_failures", 0))
         if ffmpeg_failures:
+            missing = self.ffmpeg is None
+            title = (
+                "FFmpeg is not installed"
+                if missing
+                else "Media probing was unavailable during this audit"
+            )
+            observed = (
+                f"FFmpeg is not installed; {ffmpeg_failures} media files were not validated"
+                if missing
+                else (
+                    f"Media probing was unavailable during this audit; "
+                    f"{ffmpeg_failures} media files were not validated"
+                )
+            )
             additions.append(
                 self._run_finding(
                     run,
                     now,
-                    "FFmpeg is not installed",
-                    f"FFmpeg is not installed; {ffmpeg_failures} media files were not validated",
+                    title,
+                    observed,
                     {"count": ffmpeg_failures, "tool": "ffmpeg"},
                 )
             )
@@ -883,24 +951,29 @@ class AuditEngine:
         estimator: EtaEstimator,
         current_path: str | None,
         callback: Callable[[AuditProgress], None] | None,
+        files_processed_override: int | None = None,
     ) -> None:
         if callback is None or run.id is None:
             return
         elapsed = time.monotonic() - started
-        eta = estimator.update(run.files_processed, run.files_discovered, elapsed)
+        processed = (
+            run.files_processed if files_processed_override is None else files_processed_override
+        )
+        eta = estimator.update(processed, run.files_discovered, elapsed)
         callback(
             AuditProgress(
-                run.id,
-                stage,
-                run.files_discovered,
-                run.files_processed,
-                run.files_failed,
-                run.files_skipped,
-                run.findings_count,
-                current_path,
-                elapsed,
-                self._bytes_hashed,
-                eta,
+                run_id=run.id,
+                stage=stage,
+                files_discovered=run.files_discovered,
+                files_total_estimate=run.files_discovered,
+                files_processed=processed,
+                files_failed=run.files_failed,
+                files_skipped=run.files_skipped,
+                findings_count=run.findings_count,
+                current_path=current_path,
+                elapsed_seconds=elapsed,
+                bytes_hashed=self._bytes_hashed,
+                estimated_remaining_seconds=eta,
             )
         )
 

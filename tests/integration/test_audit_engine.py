@@ -50,12 +50,14 @@ def build_engine(
     *,
     siegfried_enabled: bool = True,
     batch_size: int = 20,
+    worker_count: int = 4,
+    media_decode_workers: int = 1,
 ) -> tuple[AuditEngine, ArchiveService, Database]:
     database = Database(tmp_path / "data" / "keepreadable.db")
     database.initialize()
     settings = Settings(
-        worker_count=4,
-        media_decode_workers=1,
+        worker_count=worker_count,
+        media_decode_workers=media_decode_workers,
         persistence_batch_size=batch_size,
         identification_batch_size=batch_size,
     )
@@ -250,6 +252,105 @@ def test_pause_and_resume_ten_thousand_files(tmp_path: Path) -> None:
     with database.session() as session:
         assert ObservationRepository(session).count_for_run(resumed.id or 0) == 10_000
     assert pause_duration < 60
+
+
+def test_processing_emits_intra_batch_progress_from_engine_thread(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = tmp_path / "archive"
+    root.mkdir()
+    for index in range(20):
+        (root / f"{index:03}.txt").write_text("x", encoding="utf-8")
+    engine, archives, _database = build_engine(
+        tmp_path, siegfried_enabled=False, batch_size=20, worker_count=2
+    )
+    archive = archives.add_archive("Progress", root)
+    assert archive.id is not None
+    original = engine._work_one
+
+    def slow_work(*args: object, **kwargs: object) -> object:
+        time.sleep(0.08)
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(engine, "_work_one", slow_work)
+    processing_events: list[AuditProgress] = []
+    run = engine.start(
+        archive.id,
+        AuditMode.QUICK,
+        on_progress=lambda progress: (
+            processing_events.append(progress) if progress.stage is AuditStage.PROCESSING else None
+        ),
+    )
+    assert run.status is AuditStatus.COMPLETED
+    assert any(0 < event.files_processed < 20 for event in processing_events)
+    assert all(event.files_total_estimate == 20 for event in processing_events)
+
+
+def test_disconnect_interrupts_without_marking_missing_and_resumes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = tmp_path / "archive"
+    disconnected = tmp_path / "archive-disconnected"
+    root.mkdir()
+    for index in range(300):
+        (root / f"{index:03}.txt").write_text("x", encoding="utf-8")
+    engine, archives, database = build_engine(tmp_path, siegfried_enabled=False, batch_size=300)
+    archive = archives.add_archive("Disconnect", root)
+    assert archive.id is not None
+    disconnected_once = False
+
+    def disconnect(progress: AuditProgress) -> None:
+        nonlocal disconnected_once
+        if progress.stage is AuditStage.PROCESSING and not disconnected_once:
+            disconnected_once = True
+            root.rename(disconnected)
+            monkeypatch.setattr(
+                "keepreadable.application.audit_service.is_root_available",
+                lambda _path: False,
+            )
+
+    interrupted = engine.start(archive.id, AuditMode.DEEP, on_progress=disconnect)
+    assert interrupted.status is AuditStatus.INTERRUPTED
+    assert interrupted.interruption_reason == "archive_unavailable"
+    with database.session() as session:
+        assert not any(
+            finding.code == FindingCode.FILE_MISSING
+            for finding in FindingRepository(session).list(run_id=interrupted.id)
+        )
+        records = FileRecordRepository(session).list_present(archive.id, 0, 500)
+        assert len(records) == 300
+        assert all(record.present for record in records)
+    disconnected.rename(root)
+    monkeypatch.undo()
+    resumed = engine.resume(interrupted.id or 0)
+    assert resumed.status is AuditStatus.COMPLETED
+    with database.session() as session:
+        assert ObservationRepository(session).count_for_run(resumed.id or 0) == 300
+
+
+def test_concurrency_smoke_has_exact_counts(tmp_path: Path) -> None:
+    root = tmp_path / "archive"
+    root.mkdir()
+    for index in range(500):
+        (root / f"{index:03}.txt").write_text(f"value-{index}", encoding="utf-8")
+    engine, archives, database = build_engine(
+        tmp_path,
+        siegfried_enabled=False,
+        batch_size=100,
+        worker_count=8,
+        media_decode_workers=2,
+    )
+    archive = archives.add_archive("Concurrency", root)
+    assert archive.id is not None
+    run = engine.start(archive.id, AuditMode.DEEP)
+    assert run.status is AuditStatus.COMPLETED
+    assert run.files_processed == 500
+    with database.session() as session:
+        assert ObservationRepository(session).count_for_run(run.id or 0) == 500
+        assert not any(
+            finding.code == FindingCode.SCAN_ERROR
+            for finding in FindingRepository(session).list(run_id=run.id)
+        )
 
 
 def test_cancel_is_final_and_new_run_allowed(tmp_path: Path) -> None:
