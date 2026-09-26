@@ -50,7 +50,10 @@ class MainWindow(QMainWindow):
             context.file_service,
             context.preservation_service,
         )
-        self.history_page = HistoryScreen(context.archive_service)
+        self.history_page = HistoryScreen(
+            context.archive_service,
+            report_service=context.report_service,
+        )
         self.settings_page = SettingsScreen(context)
         self.stack.addWidget(self.findings_page)
         self.stack.addWidget(self.history_page)

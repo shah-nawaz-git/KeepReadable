@@ -1,7 +1,12 @@
-from PySide6.QtCore import QModelIndex
+from pathlib import Path
+
+from PySide6.QtCore import QModelIndex, QStandardPaths, QUrl
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
+    QFileDialog,
     QFormLayout,
     QLabel,
+    QMessageBox,
     QPushButton,
     QSplitter,
     QTableView,
@@ -12,12 +17,15 @@ from PySide6.QtWidgets import (
 )
 
 from keepreadable.application.archive_service import ArchiveService
+from keepreadable.application.report_service import ReportService
 from keepreadable.domain.audit import AuditRun
+from keepreadable.ui.dialogs.error_dialog import ErrorDialog
 from keepreadable.ui.formatting import format_duration, label_for
 from keepreadable.ui.models.history_table_model import HistoryTableModel
 from keepreadable.ui.table import configure_table
 from keepreadable.ui.widgets.pill_delegate import PillDelegate
 from keepreadable.ui.widgets.status_pill import StatusPill
+from keepreadable.ui.workers.task_worker import TaskWorker
 
 
 class HistoryScreen(QWidget):
@@ -25,11 +33,15 @@ class HistoryScreen(QWidget):
         self,
         service: ArchiveService,
         archive_id: int | None = None,
+        report_service: ReportService | None = None,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
         self.service = service
         self.archive_id = archive_id
+        self.report_service = report_service
+        self.selected_run: AuditRun | None = None
+        self.report_worker: TaskWorker | None = None
         self.model = HistoryTableModel()
         heading = QLabel("History")
         heading.setProperty("heading", True)
@@ -75,11 +87,11 @@ class HistoryScreen(QWidget):
         self.tools_table.verticalHeader().setVisible(False)
         self.tools_table.horizontalHeader().setStretchLastSection(True)
         detail_layout.addWidget(self.tools_table)
-        report = QPushButton("Report")
-        report.setEnabled(False)
-        report.setToolTip("Available in a later step")
-        report.setAccessibleName("Report available in a later step")
-        detail_layout.addWidget(report)
+        self.report_button = QPushButton("Generate report…")
+        self.report_button.setEnabled(False)
+        self.report_button.setAccessibleName("Generate audit report")
+        self.report_button.clicked.connect(self._generate_report)
+        detail_layout.addWidget(self.report_button)
         detail_layout.addStretch()
         splitter = QSplitter()
         splitter.addWidget(self.table)
@@ -114,6 +126,8 @@ class HistoryScreen(QWidget):
             self.show_run(run)
 
     def show_run(self, run: AuditRun) -> None:
+        self.selected_run = run
+        self.report_button.setEnabled(self.report_service is not None and run.id is not None)
         duration = (run.completed_at - run.started_at).total_seconds() if run.completed_at else None
         self.status_pill.set_status(label_for(run.status))
         values = {
@@ -139,3 +153,41 @@ class HistoryScreen(QWidget):
             self.tools_table.setItem(row, 0, QTableWidgetItem(name))
             self.tools_table.setItem(row, 1, QTableWidgetItem(version))
         self.tools_table.show()
+
+    def _generate_report(self) -> None:
+        if self.report_service is None or self.selected_run is None or self.selected_run.id is None:
+            return
+        documents = QStandardPaths.writableLocation(
+            QStandardPaths.StandardLocation.DocumentsLocation
+        )
+        selected = QFileDialog.getExistingDirectory(
+            self,
+            "Choose report folder",
+            documents,
+        )
+        if not selected:
+            return
+        run_id = self.selected_run.id
+        report_service = self.report_service
+        assert report_service is not None
+        self.report_button.setEnabled(False)
+        self.report_worker = TaskWorker(lambda: report_service.generate(run_id, Path(selected)))
+        self.report_worker.taskFinished.connect(self._report_finished)
+        self.report_worker.failed.connect(self._report_failed)
+        self.report_worker.start()
+
+    def _report_finished(self, result: object) -> None:
+        self.report_button.setEnabled(True)
+        paths = [Path(path) for path in result] if isinstance(result, list) else []
+        box = QMessageBox(self)
+        box.setWindowTitle("Report created")
+        box.setText("Report files were created:\n" + "\n".join(str(path) for path in paths))
+        open_button = box.addButton("Open folder", QMessageBox.ButtonRole.ActionRole)
+        box.addButton(QMessageBox.StandardButton.Ok)
+        box.exec()
+        if box.clickedButton() is open_button and paths:
+            QDesktopServices.openUrl(QUrl.fromLocalFile(str(paths[0].parent)))
+
+    def _report_failed(self, message: str) -> None:
+        self.report_button.setEnabled(True)
+        ErrorDialog("The report could not be created.", message, parent=self).exec()

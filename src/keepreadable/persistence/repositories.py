@@ -685,6 +685,14 @@ class ObservationRepository:
             model.change_kind = change_kind.value
             self.session.flush()
 
+    def list_for_run(self, run_id: int) -> list[Observation]:
+        models = self.session.scalars(
+            select(ObservationModel)
+            .where(ObservationModel.audit_run_id == run_id)
+            .order_by(ObservationModel.file_record_id)
+        )
+        return [_observation(model) for model in models]
+
     def count_for_run(self, run_id: int) -> int:
         return int(
             self.session.scalar(
@@ -892,6 +900,18 @@ class GeneratedCopyRepository:
             select(GeneratedCopyModel)
             .where(GeneratedCopyModel.source_file_record_id == file_record_id)
             .order_by(GeneratedCopyModel.created_at.desc(), GeneratedCopyModel.id.desc())
+        )
+        return [_generated_copy(model) for model in models]
+
+    def list_for_archive(self, archive_id: int) -> list[GeneratedCopy]:
+        models = self.session.scalars(
+            select(GeneratedCopyModel)
+            .join(
+                FileRecordModel,
+                GeneratedCopyModel.source_file_record_id == FileRecordModel.id,
+            )
+            .where(FileRecordModel.archive_id == archive_id)
+            .order_by(GeneratedCopyModel.created_at.desc())
         )
         return [_generated_copy(model) for model in models]
 

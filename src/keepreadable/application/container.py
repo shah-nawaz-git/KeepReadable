@@ -8,6 +8,7 @@ from keepreadable.application.audit_service import AuditEngine
 from keepreadable.application.file_service import FileService
 from keepreadable.application.findings_service import FindingsService
 from keepreadable.application.preservation_service import PreservationService
+from keepreadable.application.report_service import ReportService
 from keepreadable.config.paths import data_dir as default_data_dir
 from keepreadable.config.settings import Settings, load_settings
 from keepreadable.integrations.ffmpeg import FFmpegAdapter
@@ -32,6 +33,7 @@ class AppContext:
     file_service: FileService
     findings_service: FindingsService
     preservation_service: PreservationService
+    report_service: ReportService
 
     @classmethod
     def create(
@@ -73,6 +75,7 @@ class AppContext:
         archives = ArchiveService(database, configured, root)
         files = FileService(database)
         findings = FindingsService(database)
+        report_service = ReportService(database, configured, validators)
         preservation = PreservationService(
             database,
             configured,
@@ -100,4 +103,5 @@ class AppContext:
             files,
             findings,
             preservation,
+            report_service,
         )

@@ -129,6 +129,19 @@ def _audit(args: argparse.Namespace) -> int:
     return 0 if run.status is AuditStatus.COMPLETED else 2
 
 
+def _report(args: argparse.Namespace) -> int:
+    context = _context(args)
+    formats = ("html", "pdf") if args.format == "both" else (args.format,)
+    paths = context.report_service.generate(
+        args.run_id,
+        Path(args.out),
+        formats=formats,
+    )
+    for path in paths:
+        print(path)
+    return 0
+
+
 def _resume(args: argparse.Namespace) -> int:
     context = _context(args)
     run = context.audit_engine.resume(args.run_id)
@@ -163,6 +176,11 @@ def build_parser() -> argparse.ArgumentParser:
     resume.add_argument("run_id", type=int)
     resume.add_argument("--json", action="store_true")
     resume.add_argument("--data-dir")
+    report = subcommands.add_parser("report")
+    report.add_argument("run_id", type=int)
+    report.add_argument("--out", required=True)
+    report.add_argument("--format", choices=("html", "pdf", "both"), default="both")
+    report.add_argument("--data-dir")
     findings = subcommands.add_parser("findings")
     findings.add_argument("archive_id", type=int)
     findings.add_argument("--json", action="store_true")
@@ -190,6 +208,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _audit(args)
         if args.command == "resume":
             return _resume(args)
+        if args.command == "report":
+            return _report(args)
         if args.command == "findings":
             items = context.findings_service.list_findings(archive_id=args.archive_id, limit=100000)
             if args.json:

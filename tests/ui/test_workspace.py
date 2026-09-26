@@ -250,6 +250,40 @@ def test_settings_plainly_reports_missing_tools(qtbot: pytest.QtBot, tmp_path: P
     assert any("Unavailable checks" in text for text in labels)
 
 
+def test_history_generate_report_writes_files(
+    qtbot: pytest.QtBot,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app_context = context(tmp_path)
+    root = tmp_path / "archive"
+    root.mkdir()
+    make_jpeg(root / "image.jpg")
+    archive = app_context.archive_service.add_archive("Reports", root)
+    assert archive.id is not None
+    app_context.audit_engine.start(archive.id, AuditMode.QUICK)
+    output = tmp_path / "reports"
+    output.mkdir()
+    monkeypatch.setattr(
+        QFileDialog,
+        "getExistingDirectory",
+        lambda *_args, **_kwargs: str(output),
+    )
+    monkeypatch.setattr(QMessageBox, "exec", lambda _self: 0)
+    screen = HistoryScreen(
+        app_context.archive_service,
+        archive.id,
+        report_service=app_context.report_service,
+    )
+    qtbot.addWidget(screen)
+    screen.show()
+    assert screen.report_button.isEnabled()
+    qtbot.mouseClick(screen.report_button, Qt.MouseButton.LeftButton)
+    qtbot.waitUntil(lambda: len(list(output.glob("*"))) == 2, timeout=10_000)
+    assert list(output.glob("*.html"))
+    assert list(output.glob("*.pdf"))
+
+
 def test_progress_burst_keeps_cancel_action_responsive(
     qtbot: pytest.QtBot, monkeypatch: pytest.MonkeyPatch
 ) -> None:
