@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "tools": {
+    "siegfried": {
+      "version": "1.11.8",
+      "license": "Apache-2.0",
+      "homepage": "https://www.itforarchivists.com/siegfried",
+      "purpose": "PRONOM format identification",
+      "artifacts": [
+        {
+          "name": "siegfried_1-11-8_win64.zip",
+          "url": "https://github.com/richardlehane/siegfried/releases/download/v1.11.8/siegfried_1-11-8_win64.zip",
+          "sha256": "53ba621c675e7814073bf9a56937026a988006c25df81afd94fd0ac75e95454b",
+          "members": [
+            {"from": "sf.exe", "to": "sf.exe"}
+          ]
+        },
+        {
+          "name": "data_1-11-8.zip",
+          "url": "https://github.com/richardlehane/siegfried/releases/download/v1.11.8/data_1-11-8.zip",
+          "sha256": "7e057c913ec44df1deddad8e57088931fbf14feca8b8e6d78ccc50acc9a0066a",
+          "members": [
+            {"from": "siegfried/default.sig", "to": "default.sig"}
+          ]
+        }
+      ],
+      "signature": {
+        "droid": "DROID_SignatureFile_V125.xml",
+        "container": "container-signature-20260119.xml"
+      }
+    },
+    "ffmpeg": {
+      "version": "8.1.2",
+      "license": "GPL-3.0-only",
+      "homepage": "https://www.gyan.dev/ffmpeg/builds/",
+      "purpose": "Media probing and decode validation",
+      "artifacts": [
+        {
+          "name": "ffmpeg-8.1.2-essentials_build.zip",
+          "url": "https://www.gyan.dev/ffmpeg/builds/packages/ffmpeg-8.1.2-essentials_build.zip",
+          "sha256": "db580001caa24ac104c8cb856cd113a87b0a443f7bdf47d8c12b1d740584a2ec",
+          "members": [
+            {"from": "ffmpeg-8.1.2-essentials_build/bin/ffmpeg.exe", "to": "ffmpeg.exe"},
+            {"from": "ffmpeg-8.1.2-essentials_build/bin/ffprobe.exe", "to": "ffprobe.exe"},
+            {"from": "ffmpeg-8.1.2-essentials_build/LICENSE", "to": "FFMPEG_LICENSE.txt"},
+            {"from": "ffmpeg-8.1.2-essentials_build/README.txt", "to": "FFMPEG_README.txt"}
+          ]
+        }
+      ]
+    }
+  }
+}
