@@ -20,6 +20,10 @@ The domain layer depends on no other application layer. Only `ui` may import PyS
 - `python -m uv run ruff check .`
 - `python -m uv run mypy src`
 - `python -m uv run pytest`
+- `python -m uv run pytest -m external_tools`
+- `python -m uv run python scripts/build_windows.py`
+- `python -m uv run pytest -m packaged`
+- `python -m uv run pytest -m benchmark`
 
 ## V1 exclusions
 

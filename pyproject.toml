@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "keepreadable"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Local-first personal digital archive auditing"
 readme = "README.md"
 requires-python = ">=3.12,<3.14"
@@ -48,6 +48,9 @@ dev = [
 [tool.uv]
 exclude-newer = "2026-09-19T00:00:00Z"
 
+[tool.hatch.version]
+path = "src/keepreadable/__init__.py"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/keepreadable"]
 force-include = { "src/keepreadable/resources/tools.lock.json" = "keepreadable/resources/tools.lock.json", "src/keepreadable/resources/icon.png" = "keepreadable/resources/icon.png", "src/keepreadable/resources/icon.ico" = "keepreadable/resources/icon.ico", "src/keepreadable/policies/formats.yml" = "keepreadable/policies/formats.yml", "src/keepreadable/ui/theme/style.qss" = "keepreadable/ui/theme/style.qss", "src/keepreadable/reporting/templates/report.html.j2" = "keepreadable/reporting/templates/report.html.j2" }
@@ -72,11 +75,12 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 qt_api = "pyside6"
-addopts = "--strict-markers -m 'not benchmark'"
+addopts = "--strict-markers -m 'not packaged and not benchmark'"
 markers = [
   "external_tools: requires Siegfried or FFmpeg",
   "slow: slow-running tests",
   "ui: UI tests",
   "e2e: end-to-end tests",
   "benchmark: performance benchmark tests",
+  "packaged: requires a built Windows distribution",
 ]

@@ -192,7 +192,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
         if args.command == "tools":
-            return 0 if _print_inventory(ToolLocator()) else 1
+            _print_inventory(ToolLocator())
+            return 0
         if args.command == "bootstrap":
             return _bootstrap(args)
         context = _context(args)

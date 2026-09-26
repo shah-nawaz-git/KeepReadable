@@ -280,6 +280,10 @@ def test_history_generate_report_writes_files(
     assert screen.report_button.isEnabled()
     qtbot.mouseClick(screen.report_button, Qt.MouseButton.LeftButton)
     qtbot.waitUntil(lambda: len(list(output.glob("*"))) == 2, timeout=10_000)
+    qtbot.waitUntil(
+        lambda: screen.report_worker is not None and not screen.report_worker.isRunning(),
+        timeout=10_000,
+    )
     assert list(output.glob("*.html"))
     assert list(output.glob("*.pdf"))
 

@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  quality:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install uv
+      - run: python -m uv sync --group dev
+      - run: python -m uv run ruff format --check .
+      - run: python -m uv run ruff check .
+      - run: python -m uv run mypy src
+      - run: python -m uv run pytest -q -m "not external_tools and not packaged and not benchmark"
+        env:
+          QT_QPA_PLATFORM: offscreen
+
+  external-tools:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install uv
+      - run: python -m uv sync --group dev
+      - uses: actions/cache@v4
+        with:
+          path: ~/.keepreadable-tool-cache
+          key: tools-${{ runner.os }}-${{ hashFiles('src/keepreadable/resources/tools.lock.json') }}
+      - run: python -m uv run python scripts/bootstrap_tools.py --yes --cache ~/.keepreadable-tool-cache
+      - run: python -m uv run pytest -q -m "external_tools or e2e"
+        env:
+          QT_QPA_PLATFORM: offscreen
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install uv
+      - run: python -m uv sync --group dev
+      - run: python -m uv export --format requirements-txt --no-hashes --no-emit-project --output-file requirements.txt
+      - run: python -m uv run pip-audit -r requirements.txt --strict
+      - uses: gitleaks/gitleaks-action@v2
+
+  package:
+    needs: quality
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install uv
+      - run: python -m uv sync --group dev
+      - run: python -m uv run python scripts/build_windows.py
+      - run: python -m uv run pytest -q -m packaged
+      - uses: actions/upload-artifact@v4
+        with:
+          name: KeepReadable-Windows-x64
+          path: dist/KeepReadable-*-windows-x64.zip
+          if-no-files-found: error

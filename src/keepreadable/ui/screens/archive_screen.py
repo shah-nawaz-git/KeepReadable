@@ -103,7 +103,11 @@ class ArchiveScreen(QWidget):
             archive_id,
             preservation_service=context.preservation_service,
         )
-        self.history_view = HistoryScreen(context.archive_service, archive_id)
+        self.history_view = HistoryScreen(
+            context.archive_service,
+            archive_id,
+            report_service=context.report_service,
+        )
         self.tabs.addTab(self.overview_tab, "Overview")
         self.tabs.addTab(self.files_tab, "Files")
         self.tabs.addTab(self.findings_view, "Findings")
