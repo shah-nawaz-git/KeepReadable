@@ -100,6 +100,7 @@ class ArchiveScreen(QWidget):
             context.archive_service,
             context.file_service,
             archive_id,
+            preservation_service=context.preservation_service,
         )
         self.history_view = HistoryScreen(context.archive_service, archive_id)
         self.tabs.addTab(self.overview_tab, "Overview")
@@ -290,7 +291,11 @@ class ArchiveScreen(QWidget):
     def _open_file(self, index: QModelIndex) -> None:
         record = self.files_model.record_at(index.row())
         if record is not None and record.id is not None:
-            FileDetailDialog(self.context.file_service.file_detail(record.id), self).exec()
+            FileDetailDialog(
+                self.context.file_service.file_detail(record.id),
+                self,
+                preservation_service=self.context.preservation_service,
+            ).exec()
 
     def _progress(self, progress: AuditProgress) -> None:
         if progress.run_id is None:

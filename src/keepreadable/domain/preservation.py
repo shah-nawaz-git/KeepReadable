@@ -1,15 +1,21 @@
 from dataclasses import dataclass, field
 from datetime import datetime
+from enum import StrEnum, auto
 from typing import Any
 
 from keepreadable.domain.enums import CopyKind, VerificationStatus
+
+
+class CopyOperation(StrEnum):
+    VIDEO_TO_MP4 = auto()
+    BMP_TO_PNG = auto()
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class GeneratedCopy:
     id: int | None = None
     source_file_record_id: int
-    output_path: str
+    output_path: str | None
     copy_kind: CopyKind
     operation: str
     created_at: datetime

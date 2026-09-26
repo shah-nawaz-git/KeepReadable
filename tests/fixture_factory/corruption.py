@@ -1,5 +1,16 @@
+import hashlib
 import random
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
+
+
+@contextmanager
+def assert_unchanged(path: Path) -> Iterator[None]:
+    before = hashlib.sha256(path.read_bytes()).hexdigest()
+    yield
+    after = hashlib.sha256(path.read_bytes()).hexdigest()
+    assert after == before
 
 
 def truncate_file(path: Path, keep_fraction: float) -> Path:

@@ -9,6 +9,7 @@ from tests.fixture_factory.archives import (
     make_zip,
 )
 from tests.fixture_factory.corruption import (
+    assert_unchanged,
     flip_bytes,
     overwrite_bytes,
     truncate_file,
@@ -50,6 +51,7 @@ from tests.fixture_factory.pdfs import (
 )
 
 __all__ = [
+    "assert_unchanged",
     "corrupt_zip_member_xml",
     "damage_central_directory",
     "ffmpeg_available",

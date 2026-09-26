@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
 from keepreadable.application.archive_service import ArchiveService
 from keepreadable.application.file_service import FileService
 from keepreadable.application.findings_service import FindingDisplay, FindingsService
+from keepreadable.application.preservation_service import PreservationService
 from keepreadable.domain.enums import FindingCategory, FindingSeverity, FindingState
 from keepreadable.ui.dialogs.file_detail_dialog import FileDetailDialog
 from keepreadable.ui.models.findings_table_model import FindingsTableModel
@@ -37,6 +38,7 @@ class FindingsView(QWidget):
         archive_service: ArchiveService,
         file_service: FileService,
         archive_id: int | None = None,
+        preservation_service: PreservationService | None = None,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
@@ -44,6 +46,7 @@ class FindingsView(QWidget):
         self.archive_service = archive_service
         self.file_service = file_service
         self.archive_id = archive_id
+        self.preservation_service = preservation_service
         self.current: FindingDisplay | None = None
         self.severity_filter = self._enum_combo("All severities", list(FindingSeverity))
         self.category_filter = self._enum_combo("All categories", list(FindingCategory))
@@ -229,7 +232,9 @@ class FindingsView(QWidget):
         item = self.model.item_at(index.row())
         if item is not None and item.finding.file_record_id is not None:
             FileDetailDialog(
-                self.file_service.file_detail(item.finding.file_record_id), self
+                self.file_service.file_detail(item.finding.file_record_id),
+                self,
+                preservation_service=self.preservation_service,
             ).exec()
 
     def _open_location(self) -> None:
@@ -245,12 +250,18 @@ class FindingsScreen(QWidget):
         findings_service: FindingsService,
         archive_service: ArchiveService,
         file_service: FileService,
+        preservation_service: PreservationService | None = None,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
         heading = QLabel("Findings")
         heading.setProperty("heading", True)
-        self.view = FindingsView(findings_service, archive_service, file_service)
+        self.view = FindingsView(
+            findings_service,
+            archive_service,
+            file_service,
+            preservation_service=preservation_service,
+        )
         layout = QVBoxLayout(self)
         layout.setContentsMargins(24, 24, 24, 24)
         layout.setSpacing(16)

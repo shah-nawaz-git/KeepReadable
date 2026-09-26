@@ -16,7 +16,10 @@ from PySide6.QtWidgets import (
 )
 
 from keepreadable.application.file_service import FileDetail
+from keepreadable.application.preservation_service import PreservationService
 from keepreadable.domain.enums import CheckStatus, PolicyStatus
+from keepreadable.domain.preservation import CopyOperation
+from keepreadable.ui.dialogs.copy_dialog import CopyDialog
 from keepreadable.ui.formatting import format_bytes, label_for
 from keepreadable.ui.table import configure_table
 from keepreadable.ui.theme import palette
@@ -25,9 +28,15 @@ from keepreadable.ui.widgets.status_pill import StatusPill
 
 
 class FileDetailDialog(QDialog):
-    def __init__(self, detail: FileDetail, parent: QWidget | None = None) -> None:
+    def __init__(
+        self,
+        detail: FileDetail,
+        parent: QWidget | None = None,
+        preservation_service: PreservationService | None = None,
+    ) -> None:
         super().__init__(parent)
         self.detail = detail
+        self.preservation_service = preservation_service
         self.setWindowTitle(detail.record.relative_path)
         self.resize(820, 760)
         outer = QVBoxLayout(self)
@@ -192,6 +201,18 @@ class FileDetailDialog(QDialog):
                 layout.addWidget(label)
         else:
             layout.addWidget(QLabel("No open findings for this file."))
+        layout.addWidget(SectionHeader("COMPATIBILITY COPIES"))
+        if detail.generated_copies:
+            for generated in detail.generated_copies:
+                copy_row = QHBoxLayout()
+                copy_row.addWidget(QLabel(generated.created_at.strftime("%Y-%m-%d %H:%M")))
+                copy_row.addWidget(self._wrapped(generated.output_path or "No output retained"), 1)
+                copy_status = StatusPill()
+                copy_status.set_status(label_for(generated.verification_status))
+                copy_row.addWidget(copy_status)
+                layout.addLayout(copy_row)
+        else:
+            layout.addWidget(QLabel("No compatibility copies recorded."))
         layout.addStretch()
         scroll.setWidget(content)
         outer.addWidget(scroll, 1)
@@ -200,6 +221,24 @@ class FileDetailDialog(QDialog):
         open_button.setAccessibleName("Open file location")
         open_button.clicked.connect(self._open_location)
         self.actions_layout.addWidget(open_button)
+        if preservation_service is not None and detail.record.id is not None:
+            operations = preservation_service.available_operations(detail.record.id)
+            copy_button = QPushButton("Create compatibility copy…")
+            copy_button.setAccessibleName("Create compatibility copy")
+            if operations:
+                copy_button.clicked.connect(lambda: self._create_copy(operations[0]))
+            else:
+                detected = (
+                    detail.latest_observation.detected_format.casefold()
+                    if detail.latest_observation and detail.latest_observation.detected_format
+                    else ""
+                )
+                if "avi" in detected or "quicktime" in detected:
+                    copy_button.setEnabled(False)
+                    copy_button.setToolTip("FFmpeg is required")
+                else:
+                    copy_button.setVisible(False)
+            self.actions_layout.addWidget(copy_button)
         self.actions_layout.addStretch()
         close = QPushButton("Close")
         close.setAccessibleName("Close file details")
@@ -227,6 +266,12 @@ class FileDetailDialog(QDialog):
         if status is CheckStatus.FAILED:
             return palette.UNREADABLE
         return palette.UNKNOWN
+
+    def _create_copy(self, operation: CopyOperation) -> None:
+        if self.preservation_service is None or self.detail.record.id is None:
+            return
+        proposal = self.preservation_service.propose(self.detail.record.id, operation)
+        CopyDialog(self.preservation_service, proposal, self).exec()
 
     def _open_location(self) -> None:
         QDesktopServices.openUrl(QUrl.fromLocalFile(str(self.detail.absolute_path.parent)))

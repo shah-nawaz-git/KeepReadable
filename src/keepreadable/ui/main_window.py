@@ -48,6 +48,7 @@ class MainWindow(QMainWindow):
             context.findings_service,
             context.archive_service,
             context.file_service,
+            context.preservation_service,
         )
         self.history_page = HistoryScreen(context.archive_service)
         self.settings_page = SettingsScreen(context)

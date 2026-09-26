@@ -137,7 +137,7 @@ class GeneratedCopyModel(Base):
     source_file_record_id: Mapped[int] = mapped_column(
         ForeignKey("file_records.id", ondelete="CASCADE")
     )
-    output_path: Mapped[str] = mapped_column(Text)
+    output_path: Mapped[str | None] = mapped_column(Text)
     copy_kind: Mapped[str] = mapped_column(String(64))
     operation: Mapped[str] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(DateTime)

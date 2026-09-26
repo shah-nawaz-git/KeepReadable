@@ -21,7 +21,9 @@ from PySide6.QtWidgets import QApplication  # noqa: E402
 
 from keepreadable.application.container import AppContext  # noqa: E402
 from keepreadable.domain.enums import AuditMode  # noqa: E402
+from keepreadable.domain.preservation import CopyOperation  # noqa: E402
 from keepreadable.ui.dialogs.add_archive_dialog import AddArchiveDialog  # noqa: E402
+from keepreadable.ui.dialogs.copy_dialog import CopyDialog  # noqa: E402
 from keepreadable.ui.dialogs.file_detail_dialog import FileDetailDialog  # noqa: E402
 from keepreadable.ui.dialogs.resume_dialog import ResumeDialog  # noqa: E402
 from keepreadable.ui.main_window import MainWindow  # noqa: E402
@@ -96,6 +98,21 @@ def capture(out: Path, data_dir: Path) -> list[Path]:
     pause(200)
     grab("file_detail.png", dialog)
     dialog.close()
+    bmp_record = next(
+        record
+        for record in context.file_service.list_files(archive.id, 0, 1000)
+        if record.relative_path.casefold().endswith(".bmp")
+    )
+    assert bmp_record.id is not None
+    copy_proposal = context.preservation_service.propose(bmp_record.id, CopyOperation.BMP_TO_PNG)
+    copy_result = context.preservation_service.execute(copy_proposal)
+    copy_dialog = CopyDialog(context.preservation_service, copy_proposal, window)
+    copy_dialog._finished(copy_result)
+    copy_dialog.resize(760, 560)
+    copy_dialog.show()
+    pause(150)
+    grab("copy_verification.png", copy_dialog)
+    copy_dialog.close()
     add_dialog = AddArchiveDialog(context.archive_service, window)
     add_dialog.location_edit.setText(str(archive_root))
     add_dialog.name_edit.setText("Family Archive")
