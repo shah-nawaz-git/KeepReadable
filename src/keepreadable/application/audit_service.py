@@ -492,7 +492,9 @@ class AuditEngine:
                 observations.add_batch([item.observation for item in classified])
                 existing = findings.open_for_files([record.id or 0 for record in records])
                 updates: list[tuple[int, HealthState, str | None, object, object]] = []
-                added = 0
+                findings_to_add: list[Finding] = []
+                finding_ids_to_resolve: list[int] = []
+                findings_to_update: list[Finding] = []
                 for result, item in zip(work_results, classified, strict=True):
                     record_id = result.record.id or 0
                     previous_findings = existing.get(record_id, [])
@@ -516,10 +518,9 @@ class AuditEngine:
                             if finding.code not in current_codes and finding.code not in excluded
                         )
                     reconciliation = reconcile(previous_findings, current_findings, now)
-                    findings.add_batch(reconciliation.to_add)
-                    findings.resolve_ids(reconciliation.to_resolve_ids, now)
-                    findings.update_batch(reconciliation.to_update)
-                    added += len(reconciliation.to_add)
+                    findings_to_add.extend(reconciliation.to_add)
+                    finding_ids_to_resolve.extend(reconciliation.to_resolve_ids)
+                    findings_to_update.extend(reconciliation.to_update)
                     sha_value: object = KEEP
                     verified_value: object = KEEP
                     if WorkStep.HASH in result.plan.steps:
@@ -535,6 +536,10 @@ class AuditEngine:
                             verified_value,
                         )
                     )
+                findings.add_batch(findings_to_add)
+                findings.resolve_ids(finding_ids_to_resolve, now)
+                findings.update_batch(findings_to_update)
+                added = len(findings_to_add)
                 files.update_after_observation(updates)
                 failed = run.files_failed + sum(
                     bool(item.error or item.vanished) for item in work_results

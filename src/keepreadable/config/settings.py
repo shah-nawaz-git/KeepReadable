@@ -15,7 +15,7 @@ class Settings(BaseModel):
     hash_buffer_size: int = 1024 * 1024
     follow_reparse_points: bool = False
     subprocess_timeout_seconds: int = 600
-    identification_batch_size: int = 200
+    identification_batch_size: int = 1000
     persistence_batch_size: int = 500
     zip_max_entries: int = 100_000
     zip_max_declared_size_bytes: int = 50 * 1024**3
