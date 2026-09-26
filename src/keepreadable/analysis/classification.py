@@ -352,8 +352,11 @@ def classify_file(
         )
 
     identified = puid is not None and not (work.error or work.vanished)
+    unavailable_media_evidence = identification_warning == "identification tool unavailable" and (
+        structural is CheckStatus.UNAVAILABLE or readability is CheckStatus.UNAVAILABLE
+    )
     health = classify_health(
-        identified=identified,
+        identified=identified or unavailable_media_evidence,
         extension_matches=extension_matches,
         structural=structural,
         readability=readability,
