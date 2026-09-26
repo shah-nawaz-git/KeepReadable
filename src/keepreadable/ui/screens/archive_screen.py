@@ -254,10 +254,13 @@ class ArchiveScreen(QWidget):
             empty.setProperty("muted", True)
             self.top_findings_layout.addWidget(empty)
             empty.show()
-        for finding in overview.top_findings:
+        for finding in overview.top_findings[:6]:
             row = QFrame()
             row.setProperty("surface", True)
+            row.setFixedHeight(38)
             row_layout = QHBoxLayout(row)
+            row_layout.setContentsMargins(8, 6, 8, 6)
+            row_layout.setSpacing(8)
             severity = StatusPill()
             severity.set_status(
                 finding.severity.value.title(),
@@ -285,6 +288,17 @@ class ArchiveScreen(QWidget):
             row_layout.addWidget(path)
             self.top_findings_layout.addWidget(row)
             row.show()
+        if overview.top_findings:
+            view_all = QPushButton("View all findings →")
+            view_all.setFlat(True)
+            view_all.setAccessibleName("View all findings")
+            view_all.setStyleSheet(
+                "QPushButton { border: none; background: transparent; color: #2F6FED; "
+                "text-align: left; padding: 6px 0; }"
+            )
+            view_all.clicked.connect(lambda: self.tabs.setCurrentIndex(2))
+            self.top_findings_layout.addWidget(view_all)
+            view_all.show()
         self.files_model.set_filters(self._selected_health(), self.search.text())
         self.findings_view.refresh()
         self.history_view.refresh()

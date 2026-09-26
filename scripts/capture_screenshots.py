@@ -100,11 +100,7 @@ def capture(out: Path, data_dir: Path) -> list[Path]:
         saved.append(path)
 
     archive_screen.tabs.setCurrentIndex(0)
-    archive_screen.overview_tab.ensureWidgetVisible(
-        archive_screen.top_findings_widget,
-        20,
-        20,
-    )
+    archive_screen.overview_tab.verticalScrollBar().setValue(0)
     pause(150)
     grab("archive_overview.png")
     assert_overview_findings_visible(out / "archive_overview.png", archive_screen, window)

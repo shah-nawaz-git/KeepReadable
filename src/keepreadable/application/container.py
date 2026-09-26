@@ -40,13 +40,14 @@ class AppContext:
         cls,
         data_dir: Path | None = None,
         settings: Settings | None = None,
+        tool_locator: ToolLocator | None = None,
     ) -> AppContext:
         root = data_dir or default_data_dir()
         root.mkdir(parents=True, exist_ok=True)
         configured = settings or load_settings(root / "settings.json")
         database = Database(root / "keepreadable.db")
         database.initialize()
-        locator = ToolLocator(tools_dir=root / "tools")
+        locator = tool_locator or ToolLocator(tools_dir=root / "tools")
         sf_path = locator.locate(ToolName.SIEGFRIED)
         sf_home = locator.siegfried_home()
         siegfried = (
