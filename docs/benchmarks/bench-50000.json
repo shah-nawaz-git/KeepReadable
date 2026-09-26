@@ -1,0 +1,70 @@
+{
+  "files": 50000,
+  "environment": {
+    "platform": "Windows-11-10.0.26200-SP0",
+    "processor": "Intel64 Family 6 Model 154 Stepping 3, GenuineIntel",
+    "cpu_wmic": "unavailable",
+    "disk_wmic": "unavailable",
+    "cpu_cim": "12th Gen Intel(R) Core(TM) i5-1240P",
+    "disk_cim": "Fixed hard disk media|KBG50ZNV512G KIOXIA",
+    "ram_bytes": 16831942656,
+    "python": "3.12.3",
+    "tools": {
+      "siegfried": "1.11.8",
+      "ffmpeg": "8.1.2-essentials_build-www.gyan.dev",
+      "ffprobe": "8.1.2-essentials_build-www.gyan.dev"
+    },
+    "media_free": true
+  },
+  "discovery": {
+    "files": 50000,
+    "seconds": 3.0044458999764174,
+    "files_per_second": 16642.00377194093,
+    "memory": {
+      "sampled_peak_rss": 108634112,
+      "process_peak_wset": 108638208
+    }
+  },
+  "quick_cold": {
+    "seconds": 172.88455409999005,
+    "files_per_second": 289.21033611297537,
+    "memory": {
+      "sampled_peak_rss": 121987072,
+      "process_peak_wset": 121987072
+    }
+  },
+  "quick_incremental": {
+    "seconds": 52.1390116000548,
+    "memory": {
+      "sampled_peak_rss": 123932672,
+      "process_peak_wset": 123932672
+    }
+  },
+  "deep_cold": {
+    "seconds": 111.72704460000386,
+    "megabytes_per_second": 1.860465263475232,
+    "bytes_hashed": 217961501,
+    "memory": {
+      "sampled_peak_rss": 217763840,
+      "process_peak_wset": 218759168
+    }
+  },
+  "deep_incremental": {
+    "seconds": 54.58112389995949,
+    "memory": {
+      "sampled_peak_rss": 203075584,
+      "process_peak_wset": 218759168
+    }
+  },
+  "cancellation": {
+    "total_seconds": 5.06150810001418,
+    "latency_seconds": 0.061508100014179945,
+    "status": "cancelled"
+  },
+  "resume": {
+    "seconds": 99.65862810000544,
+    "overhead_ratio": 0.8919830329066272,
+    "status": "completed"
+  },
+  "database_bytes": 153686016
+}

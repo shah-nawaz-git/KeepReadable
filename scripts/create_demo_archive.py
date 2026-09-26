@@ -47,6 +47,7 @@ def create_demo_archive(
     seed: int = 42,
     media: bool | None = None,
     large: int = 0,
+    manifest: bool = False,
 ) -> dict[str, object]:
     destination.mkdir(parents=True, exist_ok=True)
     folders = {
@@ -154,12 +155,51 @@ def create_demo_archive(
                 folders["Documents/Scans"] / f"large-{index:05}.txt",
                 f"Synthetic performance fixture {index}.\n",
             )
+    expected_outcomes = {
+        path.relative_to(destination).as_posix(): {
+            "health": "healthy",
+            "finding_codes": [],
+        }
+        for path in destination.rglob("*")
+        if path.is_file()
+    }
+    expected_overrides = {
+        "Photos/2004/truncated-photo.jpg": ("unreadable", ["unexpected_truncation"]),
+        "Downloads/image-with-wrong-extension.jpg": ("review", ["extension_mismatch"]),
+        "Downloads/broken-package.zip": ("unreadable", ["structural_failure"]),
+        "Downloads/protected-package.zip": ("review", ["protected_content"]),
+        "Documents/Scans/malformed-scan.pdf": ("unreadable", ["structural_failure"]),
+        "Documents/Scans/truncated-scan.pdf": ("unreadable", ["unexpected_truncation"]),
+        "Documents/University/protected-notes.pdf": ("review", ["protected_content"]),
+        "Documents/University/missing-main.docx": ("unreadable", ["structural_failure"]),
+        "Downloads/mystery": ("unknown", ["unknown_format"]),
+        "Old Computer/report.doc": ("unknown", ["unknown_format"]),
+    }
+    if include_media and ffmpeg_available():
+        expected_overrides.update(
+            {
+                "Video/truncated-video.mp4": (
+                    "unreadable",
+                    ["unexpected_truncation"],
+                ),
+                "Audio/changed-audio.mp3": ("unreadable", ["decode_failure"]),
+            }
+        )
+    for relative_path, (health, finding_codes) in expected_overrides.items():
+        if relative_path in expected_outcomes:
+            expected_outcomes[relative_path] = {
+                "health": health,
+                "finding_codes": finding_codes,
+            }
     return {
         "destination": str(destination),
         "seed": seed,
         "media_included": bool(include_media and ffmpeg_available()),
         "file_count": sum(path.is_file() for path in destination.rglob("*")),
         "intentionally_damaged": damaged,
+        "expected_outcomes": expected_outcomes,
+        "duplicate_groups": [["Photos/2011/portrait.jpg", "Documents/Scans/portrait-copy.jpg"]],
+        "manifest_requested": manifest,
     }
 
 

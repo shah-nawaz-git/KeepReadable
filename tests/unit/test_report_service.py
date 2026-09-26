@@ -64,7 +64,22 @@ def audited_context(tmp_path: Path) -> tuple[AppContext, int, int, int]:
                     evidence={"summary": "Unicode evidence ü"},
                     created_at=utcnow(),
                     resolved_at=None,
-                )
+                ),
+                Finding(
+                    file_record_id=record.id,
+                    audit_run_id=deep.id or 0,
+                    code="scan_error",
+                    severity=FindingSeverity.INFO,
+                    category=FindingCategory.SCAN_ERROR,
+                    title="<img src=x onerror=alert(1)>",
+                    description=(
+                        "Markup was observed.\n\nIt is untrusted text.\n\n"
+                        "The report escapes markup.\n\nReview the evidence."
+                    ),
+                    evidence={},
+                    created_at=utcnow(),
+                    resolved_at=None,
+                ),
             ]
         )
     return context, archive.id, quick.id or 0, deep.id or 0
@@ -90,6 +105,7 @@ def test_report_data_html_pdf_and_conflict_names(tmp_path: Path) -> None:
     collector.feed(html)
     assert "script" not in collector.tags
     assert "&lt;script&gt;alert(1)&lt;/script&gt;" in html
+    assert "&lt;img src=x onerror=alert(1)&gt;" in html
     assert "ünicode &amp; family.jpg" in html
     assert data.mode_label in html
     assert data.policy_version in html

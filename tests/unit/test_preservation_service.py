@@ -271,6 +271,15 @@ def test_insufficient_space_and_source_destination_guard(
     with assert_unchanged(source), pytest.raises(InsufficientSpaceError):
         copies.execute(proposal)
     assert not list(source.parent.glob(".keepreadable-tmp-*"))
+    destination_file = tmp_path / "destination-file"
+    destination_file.write_text("not a directory", encoding="utf-8")
+    bad_destination = replace(
+        proposal,
+        destination_dir=destination_file,
+        proposed_output_name="copy.png",
+    )
+    with assert_unchanged(source), pytest.raises(CopyError):
+        copies.execute(bad_destination)
     guarded = replace(proposal, proposed_output_name=source.name)
     with assert_unchanged(source), pytest.raises(CopyError, match="cannot be the source"):
         copies.execute(guarded)
