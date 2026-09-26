@@ -1,6 +1,19 @@
 from datetime import datetime
+from enum import Enum
 
 from keepreadable.utilities.clock import utcnow
+
+
+def pluralize(count: int, singular: str, plural: str | None = None) -> str:
+    word = singular if count == 1 else (plural or f"{singular}s")
+    return f"{count:,} {word}"
+
+
+def label_for(value: Enum | str | None) -> str:
+    if value is None:
+        return "—"
+    raw = value.value if isinstance(value, Enum) else value
+    return str(raw).replace("_", " ").strip().capitalize()
 
 
 def format_bytes(value: int) -> str:

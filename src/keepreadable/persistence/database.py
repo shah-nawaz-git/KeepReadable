@@ -43,6 +43,14 @@ class Database:
 
     def initialize(self) -> None:
         Base.metadata.create_all(self.engine)
+        with self.engine.begin() as connection:
+            columns = {
+                str(row[1]) for row in connection.exec_driver_sql("PRAGMA table_info(file_records)")
+            }
+            if "last_format" not in columns:
+                connection.exec_driver_sql(
+                    "ALTER TABLE file_records ADD COLUMN last_format VARCHAR(255)"
+                )
         with self.session() as session:
             meta = session.scalar(
                 select(SchemaMetaModel).where(SchemaMetaModel.key == "schema_version")

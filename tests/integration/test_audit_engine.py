@@ -203,6 +203,35 @@ def test_missing_tools_still_validate_by_extension(tmp_path: Path) -> None:
         )
 
 
+def test_run_level_tool_finding_reconciles_across_runs(tmp_path: Path) -> None:
+    root = tmp_path / "archive"
+    root.mkdir()
+    (root / "file.txt").write_text("content", encoding="utf-8")
+    missing_engine, archives, database = build_engine(tmp_path, siegfried_enabled=False)
+    archive = archives.add_archive("Tools", root)
+    assert archive.id is not None
+    assert missing_engine.start(archive.id, AuditMode.QUICK).status is AuditStatus.COMPLETED
+    assert missing_engine.start(archive.id, AuditMode.QUICK).status is AuditStatus.COMPLETED
+    with database.session() as session:
+        current = FindingRepository(session).current_run_level_for_archive(archive.id)
+        sf_findings = [
+            finding
+            for finding in current
+            if finding.evidence.get("tool") == "siegfried"
+            and finding.state.value in {"open", "acknowledged"}
+        ]
+        assert len(sf_findings) == 1
+    available_engine = build_engine(tmp_path, siegfried_enabled=True)[0]
+    assert available_engine.start(archive.id, AuditMode.QUICK).status is AuditStatus.COMPLETED
+    with database.session() as session:
+        current = FindingRepository(session).current_run_level_for_archive(archive.id)
+        assert not any(
+            finding.evidence.get("tool") == "siegfried"
+            and finding.state.value in {"open", "acknowledged"}
+            for finding in current
+        )
+
+
 def test_pause_during_discovery_resumes_cleanly(tmp_path: Path) -> None:
     root = tmp_path / "archive"
     root.mkdir()
@@ -303,7 +332,14 @@ def test_disconnect_interrupts_without_marking_missing_and_resumes(
         nonlocal disconnected_once
         if progress.stage is AuditStage.PROCESSING and not disconnected_once:
             disconnected_once = True
-            root.rename(disconnected)
+            for _attempt in range(100):
+                try:
+                    root.rename(disconnected)
+                    break
+                except PermissionError:
+                    time.sleep(0.05)
+            else:
+                raise AssertionError("archive root remained busy during disconnect test")
             monkeypatch.setattr(
                 "keepreadable.application.audit_service.is_root_available",
                 lambda _path: False,

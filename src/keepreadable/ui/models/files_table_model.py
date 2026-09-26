@@ -5,7 +5,7 @@ from PySide6.QtCore import QAbstractTableModel, QModelIndex, QPersistentModelInd
 from keepreadable.application.file_service import FileService
 from keepreadable.domain.enums import HealthState
 from keepreadable.domain.file_record import FileRecord
-from keepreadable.ui.formatting import format_bytes
+from keepreadable.ui.formatting import format_bytes, label_for
 
 _INVALID_INDEX = QModelIndex()
 
@@ -41,8 +41,13 @@ class FilesTableModel(QAbstractTableModel):
             record.relative_path,
             format_bytes(record.size),
             datetime.fromtimestamp(record.mtime_ns / 1_000_000_000).strftime("%Y-%m-%d %H:%M"),
-            record.last_health.value.title() if record.last_health else "Unknown",
-            record.relative_path.rsplit(".", 1)[-1].upper() if "." in record.relative_path else "—",
+            label_for(record.last_health) if record.last_health else "Unknown",
+            record.last_format
+            or (
+                record.relative_path.rsplit(".", 1)[-1].upper()
+                if "." in record.relative_path
+                else "—"
+            ),
         )
         return values[index.column()]
 

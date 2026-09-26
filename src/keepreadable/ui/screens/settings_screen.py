@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from PySide6.QtCore import QUrl
+from PySide6.QtCore import Qt, QUrl
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QFormLayout,
@@ -20,6 +20,8 @@ from keepreadable.config.settings import save_settings
 from keepreadable.integrations.bootstrap import ToolBootstrapper
 from keepreadable.integrations.tool_locator import ToolName
 from keepreadable.integrations.tool_manifest import load_tool_manifest
+from keepreadable.ui.theme import palette
+from keepreadable.ui.widgets.status_pill import StatusPill
 from keepreadable.ui.workers.bootstrap_worker import BootstrapWorker
 
 
@@ -38,7 +40,10 @@ class SettingsScreen(QWidget):
         self.install_button = QPushButton("Install missing tools…")
         self.install_button.setAccessibleName("Install missing tools")
         self.install_button.clicked.connect(self._install_tools)
-        layout.addWidget(self.install_button)
+        install_row = QHBoxLayout()
+        install_row.addStretch()
+        install_row.addWidget(self.install_button)
+        layout.addLayout(install_row)
         self.progress = QProgressBar()
         self.progress.setVisible(False)
         layout.addWidget(self.progress)
@@ -47,12 +52,15 @@ class SettingsScreen(QWidget):
         self.interval = QSpinBox()
         self.interval.setRange(1, 3650)
         self.interval.setValue(context.settings.deep_verification_interval_days)
+        self.interval.setMaximumWidth(120)
         self.workers = QSpinBox()
         self.workers.setRange(1, 64)
         self.workers.setValue(context.settings.worker_count)
+        self.workers.setMaximumWidth(120)
         self.media_workers = QSpinBox()
         self.media_workers.setRange(1, 16)
         self.media_workers.setValue(context.settings.media_decode_workers)
+        self.media_workers.setMaximumWidth(120)
         form.addRow("Deep verification interval (days)", self.interval)
         form.addRow("Worker count", self.workers)
         form.addRow("Media decode workers", self.media_workers)
@@ -60,6 +68,7 @@ class SettingsScreen(QWidget):
         save.setAccessibleName("Save verification settings")
         save.clicked.connect(self._save)
         form.addRow("", save)
+        form.setAlignment(save, Qt.AlignmentFlag.AlignRight)
         layout.addWidget(verification)
         locations = QGroupBox("Locations")
         location_form = QFormLayout(locations)
@@ -87,14 +96,38 @@ class SettingsScreen(QWidget):
             self.tools_form.removeRow(0)
         inventory = self.context.tool_locator.inventory()
         unavailable: list[str] = []
+        names = {
+            ToolName.SIEGFRIED: "Siegfried",
+            ToolName.FFMPEG: "FFmpeg",
+            ToolName.FFPROBE: "ffprobe",
+        }
         for name in ToolName:
             status = inventory[name]
-            text = (
-                f"Installed · {status.version or 'version unavailable'}"
-                if status.installed
-                else "Missing"
+            row = QWidget()
+            row_layout = QVBoxLayout(row)
+            row_layout.setContentsMargins(0, 0, 0, 0)
+            pill = StatusPill()
+            pill.set_status(
+                (
+                    f"Installed · {status.version or 'version unavailable'}"
+                    if status.installed
+                    else "Missing"
+                ),
+                palette.HEALTHY if status.installed else palette.UNREADABLE,
             )
-            self.tools_form.addRow(name.value.title(), QLabel(text))
+            row_layout.addWidget(pill)
+            if name is ToolName.SIEGFRIED and status.detail:
+                signature_lines = [
+                    line.strip()
+                    for line in status.detail.splitlines()
+                    if "default.sig" in line or "pronom:" in line
+                ]
+                if signature_lines:
+                    signature = QLabel(" · ".join(signature_lines))
+                    signature.setProperty("muted", True)
+                    signature.setWordWrap(True)
+                    row_layout.addWidget(signature)
+            self.tools_form.addRow(names[name], row)
             if not status.installed:
                 unavailable.append(name.value)
         self.tools_form.addRow("veraPDF", QLabel("Not configured (optional)"))
@@ -114,6 +147,7 @@ class SettingsScreen(QWidget):
         layout = QHBoxLayout(widget)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(QLabel(str(path)))
+        layout.addStretch()
         button = QPushButton("Open folder")
         button.setAccessibleName(f"Open folder {path}")
         button.clicked.connect(lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(str(path))))

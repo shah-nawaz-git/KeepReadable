@@ -3,13 +3,13 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
-    QTableWidget,
-    QTableWidgetItem,
+    QScrollArea,
     QVBoxLayout,
     QWidget,
 )
 
 from keepreadable.application.archive_service import ArchiveService
+from keepreadable.ui.widgets.archive_row import ArchiveRow
 
 
 class ArchivesScreen(QWidget):
@@ -19,7 +19,6 @@ class ArchivesScreen(QWidget):
     def __init__(self, service: ArchiveService, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.service = service
-        self.archive_ids: list[int] = []
         heading = QLabel("Archives")
         heading.setProperty("heading", True)
         add = QPushButton("Add an Archive")
@@ -30,44 +29,32 @@ class ArchivesScreen(QWidget):
         header.addWidget(heading)
         header.addStretch()
         header.addWidget(add)
-        self.table = QTableWidget(0, 5)
-        self.table.setHorizontalHeaderLabels(
-            ("Name", "Location", "Availability", "Health", "Last audit")
-        )
-        self.table.setAccessibleName("Registered archives")
-        self.table.cellDoubleClicked.connect(lambda row, _column: self._activate(row))
-        self.table.cellActivated.connect(lambda row, _column: self._activate(row))
+        self.rows_widget = QWidget()
+        self.rows_layout = QVBoxLayout(self.rows_widget)
+        self.rows_layout.setContentsMargins(0, 0, 0, 0)
+        self.rows_layout.setSpacing(10)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QScrollArea.Shape.NoFrame)
+        scroll.setWidget(self.rows_widget)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(24, 24, 24, 24)
+        layout.setSpacing(16)
         layout.addLayout(header)
-        layout.addWidget(self.table)
+        layout.addWidget(scroll, 1)
         self.refresh()
 
     def refresh(self) -> None:
-        archives = self.service.list_archives()
-        self.archive_ids = [archive.id or 0 for archive in archives]
-        self.table.setRowCount(len(archives))
-        for row, archive in enumerate(archives):
-            overview = self.service.overview(archive.id or 0)
-            health = (
-                ", ".join(
-                    f"{state.value.title()}: {count}"
-                    for state, count in overview.health_counts.items()
-                )
-                or "No audited files"
+        while self.rows_layout.count():
+            item = self.rows_layout.takeAt(0)
+            widget = item.widget() if item is not None else None
+            if widget is not None:
+                widget.deleteLater()
+        for archive in self.service.list_archives():
+            row = ArchiveRow(
+                archive,
+                self.service.overview(archive.id or 0),
             )
-            last = overview.last_deep_run or overview.last_quick_run
-            values = (
-                archive.name,
-                archive.root_path,
-                overview.availability.value.title(),
-                health,
-                last.started_at.strftime("%Y-%m-%d %H:%M") if last else "Never",
-            )
-            for column, value in enumerate(values):
-                self.table.setItem(row, column, QTableWidgetItem(value))
-        self.table.resizeColumnsToContents()
-
-    def _activate(self, row: int) -> None:
-        if 0 <= row < len(self.archive_ids):
-            self.archiveActivated.emit(self.archive_ids[row])
+            row.activated.connect(self.archiveActivated)
+            self.rows_layout.addWidget(row)
+        self.rows_layout.addStretch()

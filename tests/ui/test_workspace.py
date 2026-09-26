@@ -11,7 +11,7 @@ from PySide6.QtWidgets import QFileDialog, QLabel, QMessageBox, QPushButton
 from keepreadable.application.audit_service import AuditProgress, AuditStage
 from keepreadable.application.container import AppContext
 from keepreadable.config.settings import Settings
-from keepreadable.domain.enums import AuditMode, AuditStatus, FindingSeverity, FindingState
+from keepreadable.domain.enums import AuditMode, AuditStatus, FindingState
 from keepreadable.integrations.tool_locator import ToolName, ToolStatus
 from keepreadable.ui.controller import AuditController
 from keepreadable.ui.dialogs.add_archive_dialog import AddArchiveDialog
@@ -20,10 +20,14 @@ from keepreadable.ui.dialogs.file_detail_dialog import FileDetailDialog
 from keepreadable.ui.dialogs.resume_dialog import ResumeChoice, ResumeDialog
 from keepreadable.ui.main_window import MainWindow
 from keepreadable.ui.screens.archive_screen import ArchiveScreen
+from keepreadable.ui.screens.archives_screen import ArchivesScreen
 from keepreadable.ui.screens.findings_screen import FindingsScreen
+from keepreadable.ui.screens.history_screen import HistoryScreen
 from keepreadable.ui.screens.settings_screen import SettingsScreen
 from keepreadable.ui.screens.welcome_screen import WelcomeScreen
+from keepreadable.ui.widgets.archive_row import ArchiveRow
 from keepreadable.ui.widgets.audit_progress_panel import AuditProgressPanel
+from keepreadable.ui.widgets.status_pill import StatusPill
 from tests.fixture_factory import make_jpeg, truncate_file
 
 pytestmark = pytest.mark.ui
@@ -71,6 +75,22 @@ def test_add_archive_dialog_browse_and_archive_appears(
     assert archive in app_context.archive_service.list_archives()
 
 
+def test_archive_rows_render_health_pills(qtbot: pytest.QtBot, tmp_path: Path) -> None:
+    app_context = context(tmp_path)
+    root = tmp_path / "archive"
+    root.mkdir()
+    make_jpeg(root / "image.jpg")
+    archive = app_context.archive_service.add_archive("Photos", root)
+    assert archive.id is not None
+    app_context.audit_engine.start(archive.id, AuditMode.QUICK)
+    screen = ArchivesScreen(app_context.archive_service)
+    qtbot.addWidget(screen)
+    screen.show()
+    rows = screen.findChildren(ArchiveRow)
+    assert len(rows) == 1
+    assert rows[0].findChildren(StatusPill)
+
+
 def test_archive_overview_and_quick_deep_workers(qtbot: pytest.QtBot, tmp_path: Path) -> None:
     app_context = context(tmp_path)
     root = tmp_path / "archive"
@@ -87,6 +107,8 @@ def test_archive_overview_and_quick_deep_workers(qtbot: pytest.QtBot, tmp_path: 
     assert quick_signal.args[0].status is AuditStatus.COMPLETED
     screen.refresh()
     assert screen.file_tile.value_label.text() == "1"
+    assert screen.files_model.records[0].last_format is not None
+    assert "JPEG" in str(screen.files_model.data(screen.files_model.index(0, 4)))
     with qtbot.waitSignal(controller.finished, timeout=60_000) as deep_signal:
         assert controller.start(archive.id, AuditMode.DEEP)
     assert deep_signal.args[0].status is AuditStatus.COMPLETED
@@ -140,6 +162,16 @@ def test_file_detail_resume_and_error_dialog_behaviour(qtbot: pytest.QtBot, tmp_
     detail.show()
     assert "image.jpg" in detail.windowTitle()
     assert detail.actions_layout.count() >= 2
+    labels = [label.text() for label in detail.findChildren(QLabel)]
+    assert "Passed" in labels
+    assert "Not checked" in labels
+    assert any(text.startswith("• ") for text in labels)
+
+    history = HistoryScreen(app_context.archive_service, archive.id)
+    qtbot.addWidget(history)
+    history.show()
+    assert history.summary_labels["mode"].text() == "Quick"
+    assert history.summary_labels["processed"].text() == "1"
 
     resume = ResumeDialog(1)
     qtbot.addWidget(resume)
@@ -173,9 +205,8 @@ def test_findings_filter_detail_and_acknowledge(qtbot: pytest.QtBot, tmp_path: P
     )
     qtbot.addWidget(screen)
     screen.show()
-    screen.view.severity_filter.setCurrentIndex(
-        screen.view.severity_filter.findData(FindingSeverity.MEDIUM)
-    )
+    severity = screen.view.model.items[0].finding.severity
+    screen.view.severity_filter.setCurrentIndex(screen.view.severity_filter.findData(severity))
     assert screen.view.model.rowCount() >= 1
     screen.view.table.selectRow(0)
     qtbot.waitUntil(lambda: screen.view.current is not None)
@@ -185,6 +216,8 @@ def test_findings_filter_detail_and_acknowledge(qtbot: pytest.QtBot, tmp_path: P
     )
     qtbot.mouseClick(acknowledge, Qt.MouseButton.LeftButton)
     assert screen.view.model.items[0].finding.state is FindingState.ACKNOWLEDGED
+    assert not screen.view.acknowledge_button.isEnabled()
+    assert screen.view.reopen_button.isEnabled()
 
 
 def test_settings_plainly_reports_missing_tools(qtbot: pytest.QtBot, tmp_path: Path) -> None:

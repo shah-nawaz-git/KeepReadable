@@ -288,6 +288,12 @@ def test_validation_code_mapping(evidence_code: EvidenceCode, finding_code: Find
     )
     assert finding_code in codes(result)
     assert all(len(item.evidence.get("errors", "")) <= 2048 for item in result.findings)
+    details = result.observation.validation_details
+    assert details["checks_performed"] == ["test"]
+    assert details["checks_not_performed"] == []
+    assert details["summary"] == "Requested checks produced evidence."
+    assert details["warnings"] == []
+    assert details["identification_engine"] == "siegfried"
 
 
 def test_carry_forward_policy_change_and_scan_error() -> None:

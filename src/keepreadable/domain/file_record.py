@@ -19,3 +19,4 @@ class FileRecord:
     last_health: HealthState | None
     last_deep_verified_at: datetime | None
     last_sha256: str | None
+    last_format: str | None = None

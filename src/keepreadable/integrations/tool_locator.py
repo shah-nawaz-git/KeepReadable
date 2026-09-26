@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 
+from platformdirs import user_data_dir
+
 from keepreadable.config.paths import tools_dir as default_tools_dir
 from keepreadable.integrations.subprocess_runner import Runner, run_command
 
@@ -50,8 +52,12 @@ class ToolLocator:
         tools_dir: Path | None = None,
         environ: Mapping[str, str] | None = None,
         which: Callable[[str], str | None] = shutil.which,
+        default_user_tools_dir: Path | None = None,
     ) -> None:
         self.tools_dir = tools_dir or default_tools_dir()
+        self.default_user_tools_dir = default_user_tools_dir or (
+            Path(user_data_dir("KeepReadable", appauthor=False)) / "tools"
+        )
         self.environ = environ if environ is not None else os.environ
         self.which = which
 
@@ -67,6 +73,10 @@ class ToolLocator:
             (Path(override), "env") if override else (None, None),
             (
                 self.tools_dir / _TOOL_DIRECTORIES[name] / _EXECUTABLE_NAMES[name],
+                "app_data",
+            ),
+            (
+                self.default_user_tools_dir / _TOOL_DIRECTORIES[name] / _EXECUTABLE_NAMES[name],
                 "app_data",
             ),
             (self._frozen_candidate(name), "bundled"),

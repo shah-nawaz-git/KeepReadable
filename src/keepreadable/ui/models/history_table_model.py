@@ -53,6 +53,9 @@ class HistoryTableModel(QAbstractTableModel):
             f"{run.findings_count:,}",
         )[index.column()]
 
+    def run_at(self, row: int) -> AuditRun | None:
+        return self.runs[row] if 0 <= row < len(self.runs) else None
+
     def headerData(
         self, section: int, orientation: Qt.Orientation, role: int = Qt.ItemDataRole.DisplayRole
     ) -> object:

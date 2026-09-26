@@ -68,6 +68,7 @@ class FileRecordModel(Base):
     last_health: Mapped[str | None] = mapped_column(String(32))
     last_deep_verified_at: Mapped[datetime | None] = mapped_column(DateTime)
     last_sha256: Mapped[str | None] = mapped_column(String(64))
+    last_format: Mapped[str | None] = mapped_column(String(255))
 
 
 class ObservationModel(Base):

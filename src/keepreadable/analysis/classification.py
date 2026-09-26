@@ -221,11 +221,25 @@ def classify_file(
         validator_name = validation.validator_name
         validator_version = validation.validator_version
         support_tier = validation.tier
-        validation_details = dict(validation.details)
+        validation_details = {
+            **validation.details,
+            "checks_performed": list(validation.checks_performed),
+            "checks_not_performed": list(validation.checks_not_performed),
+            "summary": validation.summary,
+            "warnings": list(validation.warnings),
+        }
         for code in dict.fromkeys(validation.codes):
             result = _validation_finding(code, validation, work, run, now)
             if result is not None:
                 findings.append(result)
+
+    if work.identification is not None and work.identification.available:
+        version = run.tool_versions.get("siegfried")
+        validation_details["identification_engine"] = (
+            f"siegfried {version}" if version and version != "not installed" else "siegfried"
+        )
+    else:
+        validation_details.setdefault("identification_engine", None)
 
     sha256 = previous.sha256 if previous is not None else work.record.last_sha256
     hashed_at = previous.hashed_at if previous is not None else None

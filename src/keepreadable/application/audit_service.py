@@ -491,7 +491,7 @@ class AuditEngine:
                 files = FileRecordRepository(session)
                 observations.add_batch([item.observation for item in classified])
                 existing = findings.open_for_files([record.id or 0 for record in records])
-                updates: list[tuple[int, HealthState, object, object]] = []
+                updates: list[tuple[int, HealthState, str | None, object, object]] = []
                 added = 0
                 for result, item in zip(work_results, classified, strict=True):
                     record_id = result.record.id or 0
@@ -530,6 +530,7 @@ class AuditEngine:
                         (
                             record_id,
                             item.observation.health,
+                            item.observation.detected_format,
                             sha_value,
                             verified_value,
                         )
@@ -887,8 +888,22 @@ class AuditEngine:
                     {"count": ffmpeg_failures, "tool": "ffmpeg"},
                 )
             )
-        repository.add_batch(additions)
-        return len(additions)
+        desired = {str(finding.evidence.get("tool")): finding for finding in additions}
+        existing_by_tool: dict[str, list[Finding]] = {}
+        for finding in repository.current_run_level_for_archive(run.archive_id):
+            if finding.code == FindingCode.TOOL_UNAVAILABLE.value:
+                existing_by_tool.setdefault(str(finding.evidence.get("tool")), []).append(finding)
+        added = 0
+        for tool in set(existing_by_tool) | set(desired):
+            existing = existing_by_tool.get(tool, [])
+            primary = existing[:1]
+            duplicate_ids = [finding.id for finding in existing[1:] if finding.id is not None]
+            result = reconcile(primary, [desired[tool]] if tool in desired else [], now)
+            repository.add_batch(result.to_add)
+            repository.resolve_ids([*duplicate_ids, *result.to_resolve_ids], now)
+            repository.update_batch(result.to_update)
+            added += len(result.to_add)
+        return added
 
     @staticmethod
     def _run_finding(

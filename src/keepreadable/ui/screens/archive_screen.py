@@ -1,6 +1,9 @@
-from PySide6.QtCore import QModelIndex, Signal
+from contextlib import suppress
+
+from PySide6.QtCore import QModelIndex, Qt, Signal
 from PySide6.QtWidgets import (
     QComboBox,
+    QFrame,
     QGridLayout,
     QHBoxLayout,
     QLabel,
@@ -21,12 +24,14 @@ from keepreadable.domain.audit import AuditRun
 from keepreadable.domain.enums import AuditMode, AuditStatus, HealthState
 from keepreadable.ui.controller import AuditController
 from keepreadable.ui.dialogs.file_detail_dialog import FileDetailDialog
-from keepreadable.ui.formatting import format_bytes, relative_time
+from keepreadable.ui.formatting import format_bytes, pluralize, relative_time
 from keepreadable.ui.models.files_table_model import FilesTableModel
 from keepreadable.ui.screens.findings_screen import FindingsView
 from keepreadable.ui.screens.history_screen import HistoryScreen
+from keepreadable.ui.table import configure_table
 from keepreadable.ui.theme import palette
 from keepreadable.ui.widgets.audit_progress_panel import AuditProgressPanel
+from keepreadable.ui.widgets.pill_delegate import PillDelegate
 from keepreadable.ui.widgets.stat_tile import StatTile
 from keepreadable.ui.widgets.status_pill import StatusPill
 
@@ -129,16 +134,24 @@ class ArchiveScreen(QWidget):
             self.health_pills[health] = pill
             health_grid.addWidget(pill, row, 0)
             count = QLabel("0 files")
+            count.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             count.setObjectName(f"health-{health.value}")
             health_grid.addWidget(count, row, 1)
+        health_grid.setColumnStretch(0, 1)
         layout.addLayout(health_grid)
         self.coverage_label = QLabel()
         self.coverage_label.setWordWrap(True)
         self.coverage_bar = QProgressBar()
+        self.coverage_bar.setTextVisible(False)
+        self.coverage_bar.setFixedHeight(8)
+        self.coverage_percent = QLabel("0 %")
+        coverage_row = QHBoxLayout()
+        coverage_row.addWidget(self.coverage_bar, 1)
+        coverage_row.addWidget(self.coverage_percent)
         self.coverage_note = QLabel("Files outside this window have not been re-verified recently")
         self.coverage_note.setProperty("muted", True)
         layout.addWidget(self.coverage_label)
-        layout.addWidget(self.coverage_bar)
+        layout.addLayout(coverage_row)
         layout.addWidget(self.coverage_note)
         self.quick_note = QLabel(
             "Quick Audit checks identification and structure only; it is not a deep "
@@ -146,9 +159,13 @@ class ArchiveScreen(QWidget):
         )
         self.quick_note.setWordWrap(True)
         layout.addWidget(self.quick_note)
-        self.top_findings = QLabel("No current findings")
-        self.top_findings.setWordWrap(True)
-        layout.addWidget(self.top_findings)
+        top_heading = QLabel("Top findings")
+        top_heading.setProperty("subheading", True)
+        layout.addWidget(top_heading)
+        self.top_findings_widget = QWidget()
+        self.top_findings_layout = QVBoxLayout(self.top_findings_widget)
+        self.top_findings_layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(self.top_findings_widget)
         layout.addStretch()
         return widget
 
@@ -168,6 +185,8 @@ class ArchiveScreen(QWidget):
         self.files_table = QTableView()
         self.files_table.setAccessibleName("Archive files")
         self.files_table.setModel(self.files_model)
+        configure_table(self.files_table, stretch_columns=(0, 4))
+        self.files_table.setItemDelegateForColumn(3, PillDelegate(self.files_table))
         self.files_table.doubleClicked.connect(self._open_file)
         self.files_table.activated.connect(self._open_file)
         self.search.textChanged.connect(self._filter_files)
@@ -203,18 +222,53 @@ class ArchiveScreen(QWidget):
         for health, _pill in self.health_pills.items():
             label = self.overview_tab.findChild(QLabel, f"health-{health.value}")
             if label is not None:
-                label.setText(f"{overview.health_counts.get(health, 0):,} files")
+                count = overview.health_counts.get(health, 0)
+                label.setText(pluralize(count, "file"))
         self.coverage_label.setText(
             f"Deep verification coverage — {overview.coverage_percent:.0f} % of files "
             f"verified within the last {overview.interval_days} days"
         )
         self.coverage_bar.setValue(int(overview.coverage_percent))
+        self.coverage_percent.setText(f"{overview.coverage_percent:.0f} %")
         latest = overview.last_deep_run or overview.last_quick_run
         self.quick_note.setVisible(latest is not None and latest.mode is AuditMode.QUICK)
-        self.top_findings.setText(
-            "\n".join(f"• {finding.title}" for finding in overview.top_findings)
-            or "No current findings"
-        )
+        while self.top_findings_layout.count():
+            item = self.top_findings_layout.takeAt(0)
+            widget = item.widget() if item is not None else None
+            if widget is not None:
+                widget.deleteLater()
+        if not overview.top_findings:
+            empty = QLabel("No current findings")
+            empty.setProperty("muted", True)
+            self.top_findings_layout.addWidget(empty)
+        for finding in overview.top_findings:
+            row = QFrame()
+            row.setProperty("surface", True)
+            row_layout = QHBoxLayout(row)
+            severity = StatusPill()
+            severity_colour = {
+                "high": palette.UNREADABLE,
+                "medium": palette.REVIEW,
+                "low": palette.REVIEW,
+                "info": palette.HEALTHY,
+            }[finding.severity.value]
+            severity.set_status(finding.severity.value.title(), severity_colour)
+            text = QPushButton(finding.title)
+            text.setAccessibleName(f"Open finding {finding.title}")
+            text.clicked.connect(lambda _checked=False: self.tabs.setCurrentIndex(2))
+            path = QLabel("Archive-level finding")
+            if finding.file_record_id is not None:
+                with suppress(ValueError):
+                    path.setText(
+                        self.context.file_service.file_detail(
+                            finding.file_record_id
+                        ).record.relative_path
+                    )
+            path.setProperty("muted", True)
+            row_layout.addWidget(severity)
+            row_layout.addWidget(text, 1)
+            row_layout.addWidget(path)
+            self.top_findings_layout.addWidget(row)
         self.files_model.set_filters(self._selected_health(), self.search.text())
         self.findings_view.refresh()
         self.history_view.refresh()

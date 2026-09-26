@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 
+from keepreadable.domain.audit import AuditRun
 from keepreadable.domain.enums import FindingState, HealthState
 from keepreadable.domain.file_record import FileRecord
 from keepreadable.domain.finding import Finding
@@ -9,6 +10,7 @@ from keepreadable.domain.preservation import GeneratedCopy
 from keepreadable.persistence.database import Database
 from keepreadable.persistence.repositories import (
     ArchiveRepository,
+    AuditRunRepository,
     FileRecordRepository,
     FindingRepository,
     GeneratedCopyRepository,
@@ -24,6 +26,7 @@ class FileDetail:
     history: list[Observation]
     open_findings: list[Finding]
     generated_copies: list[GeneratedCopy]
+    audit_runs: dict[int, AuditRun]
     absolute_path: Path
 
 
@@ -55,12 +58,20 @@ class FileService:
             if archive is None:
                 raise ValueError(f"Archive {record.archive_id} does not exist")
             observations = ObservationRepository(session)
+            history = observations.history_for_file(file_record_id)
+            runs_repository = AuditRunRepository(session)
+            runs = {
+                audit_run_id: run
+                for audit_run_id in {item.audit_run_id for item in history}
+                if (run := runs_repository.get(audit_run_id)) is not None
+            }
             return FileDetail(
                 record,
                 observations.latest_for_file(file_record_id),
-                observations.history_for_file(file_record_id),
+                history,
                 FindingRepository(session).open_for_file(file_record_id),
                 GeneratedCopyRepository(session).list_for_file(file_record_id),
+                runs,
                 Path(archive.root_path) / record.relative_path,
             )
 

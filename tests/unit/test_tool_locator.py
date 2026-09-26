@@ -18,14 +18,31 @@ def test_environment_override_wins(tmp_path: Path) -> None:
         tmp_path / "tools",
         environ={"KEEPREADABLE_SF_PATH": str(override)},
         which=lambda _name: str(installed),
+        default_user_tools_dir=tmp_path / "default-tools",
     )
     assert locator.locate(ToolName.SIEGFRIED) == override
 
 
 def test_app_data_path_is_second(tmp_path: Path) -> None:
     installed = touch(tmp_path / "tools" / "ffmpeg" / "ffmpeg.exe")
-    locator = ToolLocator(tmp_path / "tools", environ={}, which=lambda _name: None)
+    locator = ToolLocator(
+        tmp_path / "tools",
+        environ={},
+        which=lambda _name: None,
+        default_user_tools_dir=tmp_path / "default-tools",
+    )
     assert locator.locate(ToolName.FFMPEG) == installed
+
+
+def test_default_user_tools_follow_custom_data_dir(tmp_path: Path) -> None:
+    fallback = touch(tmp_path / "default-tools" / "siegfried" / "sf.exe")
+    locator = ToolLocator(
+        tmp_path / "isolated-data" / "tools",
+        environ={},
+        which=lambda _name: None,
+        default_user_tools_dir=tmp_path / "default-tools",
+    )
+    assert locator.locate(ToolName.SIEGFRIED) == fallback
 
 
 def test_path_fallback_and_missing(tmp_path: Path) -> None:
@@ -34,6 +51,7 @@ def test_path_fallback_and_missing(tmp_path: Path) -> None:
         tmp_path / "tools",
         environ={},
         which=lambda name: str(on_path) if name == "ffprobe.exe" else None,
+        default_user_tools_dir=tmp_path / "default-tools",
     )
     assert locator.locate(ToolName.FFPROBE) == on_path
     assert locator.locate(ToolName.SIEGFRIED) is None
@@ -46,6 +64,7 @@ def test_siegfried_home_prefers_signature_next_to_executable(tmp_path: Path) -> 
         tmp_path / "tools",
         environ={"KEEPREADABLE_SF_PATH": str(executable)},
         which=lambda _name: None,
+        default_user_tools_dir=tmp_path / "default-tools",
     )
     assert locator.siegfried_home() == executable.parent
 
@@ -65,7 +84,11 @@ def test_inventory_parses_versions(tmp_path: Path) -> None:
         }
         return CommandResult(tuple(args), 0, outputs[executable], b"", 0.1, False)
 
-    inventory = ToolLocator(tmp_path / "tools", environ={}).inventory(runner)
+    inventory = ToolLocator(
+        tmp_path / "tools",
+        environ={},
+        default_user_tools_dir=tmp_path / "default-tools",
+    ).inventory(runner)
     assert inventory[ToolName.SIEGFRIED].version == "1.11.8"
     assert inventory[ToolName.FFMPEG].version == "8.1.2-test"
     assert inventory[ToolName.FFPROBE].version == "8.1.2-test"

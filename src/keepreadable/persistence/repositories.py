@@ -94,6 +94,7 @@ def _file_record(model: FileRecordModel) -> FileRecord:
         last_health=HealthState(model.last_health) if model.last_health else None,
         last_deep_verified_at=model.last_deep_verified_at,
         last_sha256=model.last_sha256,
+        last_format=model.last_format,
     )
 
 
@@ -350,6 +351,7 @@ class FileRecordRepository:
                 "last_health": record.last_health.value if record.last_health else None,
                 "last_deep_verified_at": record.last_deep_verified_at,
                 "last_sha256": record.last_sha256,
+                "last_format": record.last_format,
             }
             for record in records
         ]
@@ -458,13 +460,14 @@ class FileRecordRepository:
         return [_file_record(model) for model in models]
 
     def update_after_observation(
-        self, updates: list[tuple[int, HealthState, object, object]]
+        self, updates: list[tuple[int, HealthState, str | None, object, object]]
     ) -> None:
-        for record_id, health, sha256, verified_at in updates:
+        for record_id, health, detected_format, sha256, verified_at in updates:
             model = self.session.get(FileRecordModel, record_id)
             if model is None:
                 continue
             model.last_health = health.value
+            model.last_format = detected_format
             model.present = True
             if sha256 is not KEEP:
                 model.last_sha256 = sha256 if isinstance(sha256, str) else None
@@ -784,6 +787,24 @@ class FindingRepository:
             if model.file_record_id is not None:
                 output[model.file_record_id].append(_finding(model))
         return output
+
+    def current_run_level_for_archive(self, archive_id: int) -> builtins.list[Finding]:
+        states = [
+            FindingState.OPEN.value,
+            FindingState.ACKNOWLEDGED.value,
+            FindingState.IGNORED.value,
+        ]
+        models = self.session.scalars(
+            select(FindingModel)
+            .join(AuditRunModel)
+            .where(
+                AuditRunModel.archive_id == archive_id,
+                FindingModel.file_record_id.is_(None),
+                FindingModel.state.in_(states),
+            )
+            .order_by(FindingModel.created_at.desc())
+        )
+        return [_finding(model) for model in models]
 
     def resolve_ids(self, finding_ids: builtins.list[int], resolved_at: datetime) -> None:
         if not finding_ids:
