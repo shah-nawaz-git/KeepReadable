@@ -50,7 +50,7 @@ exclude-newer = "2026-09-19T00:00:00Z"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/keepreadable"]
-force-include = { "src/keepreadable/resources/tools.lock.json" = "keepreadable/resources/tools.lock.json", "src/keepreadable/policies/formats.yml" = "keepreadable/policies/formats.yml" }
+force-include = { "src/keepreadable/resources/tools.lock.json" = "keepreadable/resources/tools.lock.json", "src/keepreadable/resources/icon.png" = "keepreadable/resources/icon.png", "src/keepreadable/resources/icon.ico" = "keepreadable/resources/icon.ico", "src/keepreadable/policies/formats.yml" = "keepreadable/policies/formats.yml", "src/keepreadable/ui/theme/style.qss" = "keepreadable/ui/theme/style.qss" }
 
 [tool.ruff]
 line-length = 100
