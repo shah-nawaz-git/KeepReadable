@@ -127,7 +127,9 @@ class ArchiveScreen(QWidget):
             tiles.addWidget(tile, 0, index)
         layout.addLayout(tiles)
         self.health_pills: dict[HealthState, StatusPill] = {}
-        health_grid = QGridLayout()
+        health_widget = QWidget()
+        health_widget.setMaximumWidth(480)
+        health_grid = QGridLayout(health_widget)
         for row, health in enumerate(HealthState):
             pill = StatusPill()
             pill.set_health(health)
@@ -138,7 +140,7 @@ class ArchiveScreen(QWidget):
             count.setObjectName(f"health-{health.value}")
             health_grid.addWidget(count, row, 1)
         health_grid.setColumnStretch(0, 1)
-        layout.addLayout(health_grid)
+        layout.addWidget(health_widget)
         self.coverage_label = QLabel()
         self.coverage_label.setWordWrap(True)
         self.coverage_bar = QProgressBar()
@@ -254,6 +256,11 @@ class ArchiveScreen(QWidget):
             }[finding.severity.value]
             severity.set_status(finding.severity.value.title(), severity_colour)
             text = QPushButton(finding.title)
+            text.setFlat(True)
+            text.setStyleSheet(
+                "QPushButton { border: none; background: transparent; color: #1F2933; "
+                "text-align: left; font-weight: 600; padding: 4px; }"
+            )
             text.setAccessibleName(f"Open finding {finding.title}")
             text.clicked.connect(lambda _checked=False: self.tabs.setCurrentIndex(2))
             path = QLabel("Archive-level finding")

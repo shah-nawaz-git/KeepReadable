@@ -15,12 +15,16 @@ class PillDelegate(QStyledItemDelegate):
         text = str(index.data(Qt.ItemDataRole.DisplayRole) or "Unknown")
         lowered = text.casefold()
         colour = palette.UNKNOWN
-        if "healthy" in lowered or "passed" in lowered or "info" in lowered:
+        if "healthy" in lowered or "passed" in lowered:
             colour = palette.HEALTHY
-        elif "review" in lowered or "warning" in lowered or "medium" in lowered:
+        elif "medium" in lowered or "review" in lowered or "warning" in lowered:
             colour = palette.REVIEW
         elif "unreadable" in lowered or "failed" in lowered or "high" in lowered:
             colour = palette.UNREADABLE
+        elif "info" in lowered:
+            colour = "#4A5568"
+        elif "low" in lowered:
+            colour = palette.UNKNOWN
         painter.save()
         if option.state & QStyle.StateFlag.State_Selected:
             painter.fillRect(option.rect, QColor("#E3ECFD"))

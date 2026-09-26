@@ -15,6 +15,8 @@ class AuditController(QObject):
         super().__init__()
         self.engine = engine
         self.worker: AuditWorker | None = None
+        self.current_mode: AuditMode | None = None
+        self.current_archive_id: int | None = None
 
     @property
     def is_running(self) -> bool:
@@ -23,6 +25,8 @@ class AuditController(QObject):
     def start(self, archive_id: int, mode: AuditMode, force: bool = False) -> bool:
         if self.is_running:
             return False
+        self.current_mode = mode
+        self.current_archive_id = archive_id
         self.worker = AuditWorker(
             self.engine,
             archive_id=archive_id,
@@ -37,6 +41,8 @@ class AuditController(QObject):
     def resume(self, run_id: int) -> bool:
         if self.is_running:
             return False
+        self.current_mode = None
+        self.current_archive_id = None
         self.worker = AuditWorker(self.engine, resume_run_id=run_id)
         self._connect_worker()
         self.runningChanged.emit(True)

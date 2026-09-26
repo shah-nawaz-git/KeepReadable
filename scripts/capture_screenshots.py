@@ -1,8 +1,13 @@
 import argparse
+import os
 import shutil
 import sys
 import tempfile
+import time
 from pathlib import Path
+
+os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "0"
+os.environ["QT_SCALE_FACTOR"] = "1"
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -10,12 +15,15 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from create_demo_archive import create_demo_archive  # noqa: E402
+from PIL import Image  # noqa: E402
 from PySide6.QtCore import QEventLoop, QTimer  # noqa: E402
 from PySide6.QtWidgets import QApplication  # noqa: E402
 
 from keepreadable.application.container import AppContext  # noqa: E402
 from keepreadable.domain.enums import AuditMode  # noqa: E402
+from keepreadable.ui.dialogs.add_archive_dialog import AddArchiveDialog  # noqa: E402
 from keepreadable.ui.dialogs.file_detail_dialog import FileDetailDialog  # noqa: E402
+from keepreadable.ui.dialogs.resume_dialog import ResumeDialog  # noqa: E402
 from keepreadable.ui.main_window import MainWindow  # noqa: E402
 from keepreadable.ui.screens.archive_screen import ArchiveScreen  # noqa: E402
 from keepreadable.ui.theme import apply_theme  # noqa: E402
@@ -28,10 +36,13 @@ def pause(milliseconds: int) -> None:
 
 
 def save_widget(widget: object, path: Path) -> None:
-    image = widget.grab().toImage()
-    if image.width() > 1440:
-        image = image.scaledToWidth(1440)
-    image.save(str(path), "PNG")
+    pixmap = widget.grab()
+    pixmap.save(str(path), "PNG")
+    if path.stat().st_size > 400 * 1024:
+        with Image.open(path) as image:
+            image.convert("P", palette=Image.Palette.ADAPTIVE, colors=256).save(
+                path, format="PNG", optimize=True
+            )
 
 
 def capture(out: Path, data_dir: Path) -> list[Path]:
@@ -85,6 +96,20 @@ def capture(out: Path, data_dir: Path) -> list[Path]:
     pause(200)
     grab("file_detail.png", dialog)
     dialog.close()
+    add_dialog = AddArchiveDialog(context.archive_service, window)
+    add_dialog.location_edit.setText(str(archive_root))
+    add_dialog.name_edit.setText("Family Archive")
+    add_dialog.availability_label.setText("Available")
+    add_dialog.estimate_label.setText("Estimated files: 120")
+    add_dialog.show()
+    pause(150)
+    grab("add_archive.png", add_dialog)
+    add_dialog.close()
+    resume_dialog = ResumeDialog(1, window)
+    resume_dialog.show()
+    pause(150)
+    grab("resume_dialog.png", resume_dialog)
+    resume_dialog.close()
     welcome_data = data_dir.parent / "welcome-data"
     if welcome_data.exists():
         shutil.rmtree(welcome_data)
@@ -100,8 +125,19 @@ def capture(out: Path, data_dir: Path) -> list[Path]:
     assert isinstance(archive_screen, ArchiveScreen)
     archive_screen.tabs.setCurrentIndex(0)
     context.archive_service.estimate_file_count(archive_root, limit=5000, time_budget=5)
+    latest_progress: list[object | None] = [None]
+    window.controller.progress.connect(lambda progress: latest_progress.__setitem__(0, progress))
     window.controller.start(archive.id, AuditMode.DEEP, True)
-    pause(1500)
+    deadline = time.monotonic() + 60
+    while time.monotonic() < deadline:
+        pause(50)
+        progress = latest_progress[0]
+        if progress is None or progress.stage.value != "processing":
+            continue
+        total = progress.files_total_estimate
+        ratio = progress.files_processed / total if total else 0
+        if 0.3 <= ratio <= 0.7 and progress.current_path:
+            break
     grab("deep_audit_progress.png")
     if window.controller.is_running:
         loop = QEventLoop()

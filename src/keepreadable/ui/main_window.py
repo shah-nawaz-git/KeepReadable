@@ -117,6 +117,9 @@ class MainWindow(QMainWindow):
             self.controller.start(archive.id, AuditMode.QUICK)
 
     def open_archive(self, archive_id: int) -> None:
+        self.sidebar.blockSignals(True)
+        self.sidebar.setCurrentRow(0)
+        self.sidebar.blockSignals(False)
         screen = ArchiveScreen(self.context, self.controller, archive_id)
         screen.removed.connect(self._archive_removed)
         self.stack.addWidget(screen)
@@ -127,8 +130,10 @@ class MainWindow(QMainWindow):
         self._create_archives_page()
 
     def _status_progress(self, progress: AuditProgress) -> None:
+        mode = self.controller.current_mode
+        mode_label = mode.value.title() if mode is not None else "Audit"
         self.statusBar().showMessage(
-            f"{progress.stage.value.title()} Audit running — "
+            f"{mode_label} Audit running — "
             f"{progress.files_processed:,} / {progress.files_total_estimate:,} files"
         )
 
