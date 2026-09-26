@@ -16,7 +16,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from create_demo_archive import create_demo_archive  # noqa: E402
 from PIL import Image  # noqa: E402
-from PySide6.QtCore import QEventLoop, QTimer  # noqa: E402
+from PySide6.QtCore import QEventLoop, QPoint, QTimer  # noqa: E402
 from PySide6.QtWidgets import QApplication  # noqa: E402
 
 from keepreadable.application.container import AppContext  # noqa: E402
@@ -47,11 +47,26 @@ def save_widget(widget: object, path: Path) -> None:
             )
 
 
-def assert_overview_findings_visible(path: Path) -> None:
+def assert_overview_findings_visible(
+    path: Path, archive_screen: ArchiveScreen, window: MainWindow
+) -> None:
+    origin = archive_screen.top_findings_widget.mapTo(window, QPoint(0, 0))
+    width = min(
+        archive_screen.top_findings_widget.width(),
+        window.width() - origin.x(),
+    )
+    height = min(
+        archive_screen.top_findings_widget.height(),
+        window.height() - origin.y(),
+    )
+    if width <= 0 or height <= 0:
+        raise RuntimeError("archive overview top-findings region is outside the capture")
+    bounds = (origin.x(), origin.y(), origin.x() + width, origin.y() + height)
     with Image.open(path) as image:
-        region = image.convert("L").crop((200, 390, 1400, 570))
-        dark_pixels = sum(value < 150 for value in region.getdata())
-    if dark_pixels < 200:
+        region = image.convert("L").crop(bounds)
+        pixels = list(region.getdata())
+        dark_ratio = sum(value < 170 for value in pixels) / max(1, len(pixels))
+    if dark_ratio < 0.01:
         raise RuntimeError("archive overview top-findings region appears blank")
 
 
@@ -85,9 +100,14 @@ def capture(out: Path, data_dir: Path) -> list[Path]:
         saved.append(path)
 
     archive_screen.tabs.setCurrentIndex(0)
+    archive_screen.overview_tab.ensureWidgetVisible(
+        archive_screen.top_findings_widget,
+        20,
+        20,
+    )
     pause(150)
     grab("archive_overview.png")
-    assert_overview_findings_visible(out / "archive_overview.png")
+    assert_overview_findings_visible(out / "archive_overview.png", archive_screen, window)
     archive_screen.tabs.setCurrentIndex(1)
     pause(150)
     grab("files.png")
@@ -139,7 +159,8 @@ def capture(out: Path, data_dir: Path) -> list[Path]:
     welcome_data = data_dir.parent / "welcome-data"
     if welcome_data.exists():
         shutil.rmtree(welcome_data)
-    welcome = MainWindow(AppContext.create(welcome_data))
+    welcome_context = AppContext.create(welcome_data)
+    welcome = MainWindow(welcome_context)
     welcome.resize(1440, 900)
     welcome.show()
     pause(200)
@@ -172,6 +193,18 @@ def capture(out: Path, data_dir: Path) -> list[Path]:
         QTimer.singleShot(120_000, loop.quit)
         loop.exec()
     window.close()
+    for widget in (
+        dialog,
+        copy_dialog,
+        add_dialog,
+        resume_dialog,
+        welcome,
+        window,
+    ):
+        widget.deleteLater()
+    app.processEvents()
+    context.db.dispose()
+    welcome_context.db.dispose()
     return saved
 
 

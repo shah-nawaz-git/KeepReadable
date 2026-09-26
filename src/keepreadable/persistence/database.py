@@ -105,6 +105,9 @@ class Database:
         )
         connection.exec_driver_sql("DROP TABLE generated_copies_required_output")
 
+    def dispose(self) -> None:
+        self.engine.dispose()
+
     @contextmanager
     def session(self) -> Iterator[Session]:
         session = self._session_factory()

@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QProgressBar,
     QPushButton,
+    QScrollArea,
     QTableView,
     QTabWidget,
     QVBoxLayout,
@@ -102,11 +103,7 @@ class ArchiveScreen(QWidget):
             archive_id,
             preservation_service=context.preservation_service,
         )
-        self.history_view = HistoryScreen(
-            context.archive_service,
-            archive_id,
-            report_service=context.report_service,
-        )
+        self.history_view = HistoryScreen(context.archive_service, archive_id)
         self.tabs.addTab(self.overview_tab, "Overview")
         self.tabs.addTab(self.files_tab, "Files")
         self.tabs.addTab(self.findings_view, "Findings")
@@ -174,7 +171,11 @@ class ArchiveScreen(QWidget):
         self.top_findings_layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.top_findings_widget)
         layout.addStretch()
-        return widget
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setWidget(widget)
+        return scroll
 
     def _build_files(self) -> QWidget:
         widget = QWidget()
