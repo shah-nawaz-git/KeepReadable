@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import builtins
 from collections.abc import Iterator
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from typing import Any
 
 from sqlalchemy import case, exists, func, or_, select
@@ -37,6 +37,7 @@ from keepreadable.persistence.models import (
     GeneratedCopyModel,
     ObservationModel,
 )
+from keepreadable.utilities.clock import utcnow
 
 
 def _archive(model: ArchiveModel) -> Archive:
@@ -458,7 +459,7 @@ class FileRecordRepository:
         return int(count), int(size)
 
     def deep_verification_coverage(self, archive_id: int, within_days: int) -> tuple[int, int]:
-        cutoff = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=within_days)
+        cutoff = utcnow() - timedelta(days=within_days)
         verified, total = self.session.execute(
             select(
                 func.count(case((FileRecordModel.last_deep_verified_at >= cutoff, 1))),
