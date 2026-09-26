@@ -244,18 +244,16 @@ class ArchiveScreen(QWidget):
             empty = QLabel("No current findings")
             empty.setProperty("muted", True)
             self.top_findings_layout.addWidget(empty)
+            empty.show()
         for finding in overview.top_findings:
             row = QFrame()
             row.setProperty("surface", True)
             row_layout = QHBoxLayout(row)
             severity = StatusPill()
-            severity_colour = {
-                "high": palette.UNREADABLE,
-                "medium": palette.REVIEW,
-                "low": palette.REVIEW,
-                "info": palette.HEALTHY,
-            }[finding.severity.value]
-            severity.set_status(finding.severity.value.title(), severity_colour)
+            severity.set_status(
+                finding.severity.value.title(),
+                palette.severity_colour(finding.severity),
+            )
             text = QPushButton(finding.title)
             text.setFlat(True)
             text.setStyleSheet(
@@ -277,6 +275,7 @@ class ArchiveScreen(QWidget):
             row_layout.addWidget(text, 1)
             row_layout.addWidget(path)
             self.top_findings_layout.addWidget(row)
+            row.show()
         self.files_model.set_filters(self._selected_health(), self.search.text())
         self.findings_view.refresh()
         self.history_view.refresh()

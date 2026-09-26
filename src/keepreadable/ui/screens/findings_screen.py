@@ -189,13 +189,10 @@ class FindingsView(QWidget):
         self.current = item
         finding = item.finding
         self.detail_title.setText(finding.title)
-        severity_colour = {
-            FindingSeverity.HIGH: palette.UNREADABLE,
-            FindingSeverity.MEDIUM: palette.REVIEW,
-            FindingSeverity.LOW: palette.REVIEW,
-            FindingSeverity.INFO: palette.HEALTHY,
-        }[finding.severity]
-        self.severity_pill.set_status(finding.severity.value.title(), severity_colour)
+        self.severity_pill.set_status(
+            finding.severity.value.title(),
+            palette.severity_colour(finding.severity),
+        )
         self.status_pill.set_status(finding.state.value.title(), palette.UNKNOWN)
         self.context_label.setText(
             f"{item.archive_name} \u203a {item.relative_path or 'Archive-level finding'}"

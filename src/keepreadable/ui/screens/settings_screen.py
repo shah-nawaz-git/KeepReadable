@@ -128,6 +128,7 @@ class SettingsScreen(QWidget):
                     signature.setWordWrap(True)
                     row_layout.addWidget(signature)
             self.tools_form.addRow(names[name], row)
+            row.show()
             if not status.installed:
                 unavailable.append(name.value)
         self.tools_form.addRow("veraPDF", QLabel("Not configured (optional)"))

@@ -132,8 +132,10 @@ class HistoryScreen(QWidget):
         }
         for key, value in values.items():
             self.summary_labels[key].setText(value)
+            self.summary_labels[key].show()
         tools = sorted(run.tool_versions.items())
         self.tools_table.setRowCount(len(tools))
         for row, (name, version) in enumerate(tools):
             self.tools_table.setItem(row, 0, QTableWidgetItem(name))
             self.tools_table.setItem(row, 1, QTableWidgetItem(version))
+        self.tools_table.show()

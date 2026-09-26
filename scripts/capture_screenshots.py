@@ -47,6 +47,14 @@ def save_widget(widget: object, path: Path) -> None:
             )
 
 
+def assert_overview_findings_visible(path: Path) -> None:
+    with Image.open(path) as image:
+        region = image.convert("L").crop((200, 390, 1400, 570))
+        dark_pixels = sum(value < 150 for value in region.getdata())
+    if dark_pixels < 200:
+        raise RuntimeError("archive overview top-findings region appears blank")
+
+
 def capture(out: Path, data_dir: Path) -> list[Path]:
     out.mkdir(parents=True, exist_ok=True)
     archive_root = data_dir.parent / "family-archive-demo"
@@ -79,6 +87,7 @@ def capture(out: Path, data_dir: Path) -> list[Path]:
     archive_screen.tabs.setCurrentIndex(0)
     pause(150)
     grab("archive_overview.png")
+    assert_overview_findings_visible(out / "archive_overview.png")
     archive_screen.tabs.setCurrentIndex(1)
     pause(150)
     grab("files.png")

@@ -36,18 +36,12 @@ class ArchiveRow(QFrame):
         else:
             availability.set_status("Not connected", palette.UNREADABLE)
         counts = QHBoxLayout()
-        health_colours = {
-            HealthState.HEALTHY: palette.HEALTHY,
-            HealthState.REVIEW: palette.REVIEW,
-            HealthState.UNREADABLE: palette.UNREADABLE,
-            HealthState.UNKNOWN: palette.UNKNOWN,
-        }
         for health in HealthState:
             count = overview.health_counts.get(health, 0)
             pill = StatusPill()
             pill.set_status(
                 f"{health.value.title()} {count:,}",
-                health_colours[health] if count else "#9AA5B1",
+                palette.health_colour(health) if count else "#9AA5B1",
             )
             counts.addWidget(pill)
         latest = overview.last_deep_run or overview.last_quick_run

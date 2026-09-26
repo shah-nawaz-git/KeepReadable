@@ -20,14 +20,8 @@ class StatusPill(QWidget):
         self.set_health(HealthState.UNKNOWN)
 
     def set_health(self, health: HealthState) -> None:
-        colours = {
-            HealthState.HEALTHY: palette.HEALTHY,
-            HealthState.REVIEW: palette.REVIEW,
-            HealthState.UNREADABLE: palette.UNREADABLE,
-            HealthState.UNKNOWN: palette.UNKNOWN,
-        }
         text = health.value.replace("_", " ").title()
-        self.dot.setStyleSheet(f"color: {colours[health]}; background: transparent;")
+        self.dot.setStyleSheet(f"color: {palette.health_colour(health)}; background: transparent;")
         self.label.setText(text)
         self.label.setTextInteractionFlags(Qt.TextInteractionFlag.NoTextInteraction)
         self.setAccessibleName(text)

@@ -57,4 +57,5 @@ class ArchivesScreen(QWidget):
             )
             row.activated.connect(self.archiveActivated)
             self.rows_layout.addWidget(row)
+            row.show()
         self.rows_layout.addStretch()
