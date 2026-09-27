@@ -115,7 +115,8 @@ def test_malformed_siegfried_output_is_rejected(payload: bytes) -> None:
 
 
 def test_forbidden_user_facing_terminology_absent() -> None:
-    root = Path(__file__).parents[2] / "src" / "keepreadable"
+    project = Path(__file__).parents[2]
+    source = project / "src" / "keepreadable"
     forbidden = (
         "corrupt",
         "guaranteed",
@@ -126,16 +127,31 @@ def test_forbidden_user_facing_terminology_absent() -> None:
         "fully valid",
         "will become obsolete",
     )
-    allowed_hits = {
-        ("reporting/templates/report.html.j2", "100%"),
-    }
+    allowed_phrases = (
+        (
+            "KeepReadable is a Python desktop application that audits personal digital "
+            "archives for corruption, unreadable files and format risks, then creates and "
+            "verifies safe compatibility copies without modifying the originals."
+        ),
+        (
+            "Built a Python digital-preservation engine that audits mixed personal archives "
+            "for corruption and format/readability risks, creates verified compatibility "
+            "copies, and tracks long-term file integrity."
+        ),
+    )
+    paths = [
+        path
+        for path in source.rglob("*")
+        if path.suffix.casefold() in {".py", ".yml", ".j2", ".qss"}
+    ]
+    paths.extend((project / "README.md", project / "AGENTS.md"))
+    paths.extend((project / "docs").glob("*.md"))
     hits: list[str] = []
-    for path in root.rglob("*"):
-        if path.suffix.casefold() not in {".py", ".yml", ".j2", ".qss"}:
-            continue
+    for path in paths:
         text = path.read_text(encoding="utf-8").casefold()
+        for phrase in allowed_phrases:
+            text = text.replace(phrase.casefold(), "")
         for word in forbidden:
-            relative = path.relative_to(root).as_posix()
-            if word in text and (relative, word) not in allowed_hits:
-                hits.append(f"{relative}: {word}")
+            if word in text:
+                hits.append(f"{path.relative_to(project).as_posix()}: {word}")
     assert hits == []
