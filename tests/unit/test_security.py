@@ -130,13 +130,8 @@ def test_forbidden_user_facing_terminology_absent() -> None:
     allowed_phrases = (
         (
             "KeepReadable is a Python desktop application that audits personal digital "
-            "archives for corruption, unreadable files and format risks, then creates and "
-            "verifies safe compatibility copies without modifying the originals."
-        ),
-        (
-            "Built a Python digital-preservation engine that audits mixed personal archives "
-            "for corruption and format/readability risks, creates verified compatibility "
-            "copies, and tracks long-term file integrity."
+            "archives for corruption, unreadable files and format risks, then creates "
+            "verified compatibility copies without modifying the originals."
         ),
         "width:100%",
     )

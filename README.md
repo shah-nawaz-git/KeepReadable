@@ -1,6 +1,6 @@
 # KeepReadable
 
-KeepReadable is a Python desktop application that audits personal digital archives for corruption, unreadable files and format risks, then creates and verifies safe compatibility copies without modifying the originals.
+KeepReadable is a Python desktop application that audits personal digital archives for corruption, unreadable files and format risks, then creates verified compatibility copies without modifying the originals.
 
 ![Archive overview with health counts, verification coverage, and current findings](docs/screenshots/archive_overview.png)
 
@@ -207,10 +207,6 @@ The only application network activity is a user-approved download of pinned exte
 ## Future direction
 
 Possible future work includes more validators, additional compatibility-copy operations, richer historical comparisons, signed Windows releases, and optional scheduling. Each addition would keep the local-first and immutable-originals model.
-
-## Suggested CV bullet
-
-Built a Python digital-preservation engine that audits mixed personal archives for corruption and format/readability risks, creates verified compatibility copies, and tracks long-term file integrity.
 
 ## License
 
