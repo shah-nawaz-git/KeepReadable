@@ -156,3 +156,21 @@ def test_forbidden_user_facing_terminology_absent() -> None:
             if word in text:
                 hits.append(f"{path.relative_to(project).as_posix()}: {word}")
     assert hits == []
+
+
+def test_tracked_text_files_contain_no_local_profile_paths() -> None:
+    project = Path(__file__).parents[2]
+    suffixes = {".py", ".md", ".yml", ".yaml", ".json", ".j2", ".qss", ".toml", ".txt", ".spec"}
+    markers = ("c:\\users\\", "c:/users/", "/users/hp", "/home/")
+    hits: list[str] = []
+    for folder in ("src", "tests", "docs", "scripts", "packaging", ".github"):
+        for path in (project / folder).rglob("*"):
+            if path.suffix.casefold() not in suffixes or ".tmp" in path.parts:
+                continue
+            if path == Path(__file__):
+                continue
+            text = path.read_text(encoding="utf-8", errors="ignore").casefold()
+            hits.extend(
+                f"{path.relative_to(project).as_posix()}: {m}" for m in markers if m in text
+            )
+    assert hits == []
