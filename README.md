@@ -170,7 +170,7 @@ The CLI supports `tools`, `bootstrap`, `archives`, `add`, `audit`, `resume`, `re
 
 ## Packaged app
 
-The Windows artifact is `dist/KeepReadable-0.1.0-windows-x64.zip`.
+Download `KeepReadable-0.1.0-windows-x64.zip` from the [v0.1.0 release](https://github.com/shah-nawaz-git/KeepReadable/releases/tag/v0.1.0) on GitHub Releases. The release notes list the SHA-256 of the ZIP. Building from source with `scripts/build_windows.py` writes the same artifact to `dist/`.
 
 1. Unzip the complete archive to a writable folder.
 2. Run `KeepReadable.exe` for the desktop application.
@@ -178,7 +178,7 @@ The Windows artifact is `dist/KeepReadable-0.1.0-windows-x64.zip`.
 4. Application data is stored in `%LOCALAPPDATA%\KeepReadable` by default.
 5. Install pinned external tools from **Settings → Install missing tools** when needed.
 
-Siegfried and FFmpeg are downloaded on demand instead of being redistributed in the ZIP. The downloads use HTTPS, pinned checksums, and member allow-lists. The executable is unsigned, so Microsoft Defender SmartScreen may show a warning.
+Siegfried and FFmpeg are downloaded on demand instead of being redistributed in the ZIP. The downloads use HTTPS, pinned checksums, and member allow-lists. The ZIP includes `LICENSE.txt`, `THIRD_PARTY.md`, and a `LICENSES/` folder with notices for bundled components. The executable is unsigned, so Microsoft Defender SmartScreen may show a warning.
 
 ## Privacy
 
