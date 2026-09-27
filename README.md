@@ -95,7 +95,7 @@ See [docs/FORMAT_SUPPORT.md](docs/FORMAT_SUPPORT.md) for the generated matrix an
 - The audit engine never renames, moves, deletes, or rewrites originals.
 - ZIP validators inspect entries but never extract them.
 - Reparse points are not followed by default.
-- Compatibility copies are written outside the source path through a temporary-file and verification pipeline.
+- Compatibility copies are new files with distinct `.access` names, written through a temporary-file and verification pipeline; the destination can never resolve to the original.
 - Subprocesses use argument lists, `shell=False`, timeouts, bounded output, and cancellation cleanup.
 - File contents remain local.
 

@@ -138,6 +138,7 @@ def test_forbidden_user_facing_terminology_absent() -> None:
             "for corruption and format/readability risks, creates verified compatibility "
             "copies, and tracks long-term file integrity."
         ),
+        "width:100%",
     )
     paths = [
         path
