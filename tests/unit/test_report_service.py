@@ -2,6 +2,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 
 import pikepdf
+import pytest
 from pypdf import PdfReader
 
 from keepreadable.application.container import AppContext
@@ -13,6 +14,7 @@ from keepreadable.domain.enums import (
     FindingSeverity,
 )
 from keepreadable.domain.finding import Finding
+from keepreadable.integrations.tool_locator import ToolLocator
 from keepreadable.persistence.repositories import FileRecordRepository, FindingRepository
 from keepreadable.utilities.clock import utcnow
 from tests.fixture_factory import make_jpeg, make_unknown_binary
@@ -85,7 +87,10 @@ def audited_context(tmp_path: Path) -> tuple[AppContext, int, int, int]:
     return context, archive.id, quick.id or 0, deep.id or 0
 
 
-def test_report_data_html_pdf_and_conflict_names(tmp_path: Path) -> None:
+@pytest.mark.external_tools
+def test_report_data_html_pdf_and_conflict_names(
+    tmp_path: Path, tools_available: ToolLocator
+) -> None:
     context, archive_id, quick_id, deep_id = audited_context(tmp_path)
     quick_data = context.report_service.build(quick_id)
     assert any("This was a Quick Audit" in item for item in quick_data.limitations)

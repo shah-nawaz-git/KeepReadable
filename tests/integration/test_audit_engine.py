@@ -89,7 +89,10 @@ def build_engine(
     return engine, ArchiveService(database, settings, tmp_path / "data"), database
 
 
-def test_quick_then_deep_real_tools_and_immutability(tmp_path: Path) -> None:
+@pytest.mark.external_tools
+def test_quick_then_deep_real_tools_and_immutability(
+    tmp_path: Path, tools_available: ToolLocator
+) -> None:
     root = tmp_path / "archive"
     root.mkdir()
     make_jpeg(root / "healthy.jpg")
@@ -203,7 +206,10 @@ def test_missing_tools_still_validate_by_extension(tmp_path: Path) -> None:
         )
 
 
-def test_run_level_tool_finding_reconciles_across_runs(tmp_path: Path) -> None:
+@pytest.mark.external_tools
+def test_run_level_tool_finding_reconciles_across_runs(
+    tmp_path: Path, tools_available: ToolLocator
+) -> None:
     root = tmp_path / "archive"
     root.mkdir()
     (root / "file.txt").write_text("content", encoding="utf-8")

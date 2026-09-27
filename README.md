@@ -103,14 +103,14 @@ See [docs/SAFETY.md](docs/SAFETY.md).
 
 ## Testing
 
-The repository currently collects 276 tests.
+The repository currently collects 277 tests.
 
 | Group | Collected | Command |
 |---|---:|---|
-| Default selection | 274 | `python -m uv run pytest -q` |
-| CI unit/integration selection | 255 | `python -m uv run pytest -q -m "not external_tools and not e2e and not packaged and not benchmark"` |
-| External tools or E2E | 19 | `python -m uv run pytest -q -m "external_tools or e2e"` |
-| External tools | 17 | `python -m uv run pytest -q -m external_tools` |
+| Default selection | 275 | `python -m uv run pytest -q` |
+| CI unit/integration selection | 252 | `python -m uv run pytest -q -m "not external_tools and not e2e and not packaged and not benchmark"` |
+| External tools or E2E | 23 | `python -m uv run pytest -q -m "external_tools or e2e"` |
+| External tools | 21 | `python -m uv run pytest -q -m external_tools` |
 | E2E | 5 | `python -m uv run pytest -q -m e2e` |
 | UI | 14 | `python -m uv run pytest -q -m ui` |
 | Benchmark | 1 | `python -m uv run pytest -q -m benchmark` |

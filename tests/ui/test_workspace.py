@@ -12,7 +12,7 @@ from keepreadable.application.audit_service import AuditProgress, AuditStage
 from keepreadable.application.container import AppContext
 from keepreadable.config.settings import Settings
 from keepreadable.domain.enums import AuditMode, AuditStatus, FindingState
-from keepreadable.integrations.tool_locator import ToolName, ToolStatus
+from keepreadable.integrations.tool_locator import ToolLocator, ToolName, ToolStatus
 from keepreadable.ui.controller import AuditController
 from keepreadable.ui.dialogs.add_archive_dialog import AddArchiveDialog
 from keepreadable.ui.dialogs.error_dialog import ErrorDialog
@@ -91,7 +91,10 @@ def test_archive_rows_render_health_pills(qtbot: pytest.QtBot, tmp_path: Path) -
     assert rows[0].findChildren(StatusPill)
 
 
-def test_archive_overview_and_quick_deep_workers(qtbot: pytest.QtBot, tmp_path: Path) -> None:
+@pytest.mark.external_tools
+def test_archive_overview_and_quick_deep_workers(
+    qtbot: pytest.QtBot, tmp_path: Path, tools_available: ToolLocator
+) -> None:
     app_context = context(tmp_path)
     root = tmp_path / "archive"
     root.mkdir()
