@@ -17,11 +17,12 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from create_demo_archive import create_demo_archive  # noqa: E402
 from PIL import Image  # noqa: E402
 from PySide6.QtCore import QEventLoop, QPoint, QTimer  # noqa: E402
-from PySide6.QtWidgets import QApplication  # noqa: E402
+from PySide6.QtWidgets import QApplication, QLabel, QLineEdit  # noqa: E402
 
 from keepreadable.application.container import AppContext  # noqa: E402
 from keepreadable.domain.enums import AuditMode  # noqa: E402
 from keepreadable.domain.preservation import CopyOperation  # noqa: E402
+from keepreadable.integrations.tool_locator import ToolLocator, ToolName  # noqa: E402
 from keepreadable.ui.dialogs.add_archive_dialog import AddArchiveDialog  # noqa: E402
 from keepreadable.ui.dialogs.copy_dialog import CopyDialog  # noqa: E402
 from keepreadable.ui.dialogs.file_detail_dialog import FileDetailDialog  # noqa: E402
@@ -70,13 +71,41 @@ def assert_overview_findings_visible(
         raise RuntimeError("archive overview top-findings region appears blank")
 
 
-def capture(out: Path, data_dir: Path) -> list[Path]:
+def mirror_tools_for_capture(data_dir: Path) -> None:
+    locator = ToolLocator()
+    destinations = {
+        ToolName.SIEGFRIED: data_dir / "tools" / "siegfried" / "sf.exe",
+        ToolName.FFMPEG: data_dir / "tools" / "ffmpeg" / "ffmpeg.exe",
+        ToolName.FFPROBE: data_dir / "tools" / "ffmpeg" / "ffprobe.exe",
+    }
+    for name, destination in destinations.items():
+        source = locator.locate(name)
+        if source is not None:
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, destination)
+    home = locator.siegfried_home()
+    if home is not None and (home / "default.sig").is_file():
+        destination = data_dir / "tools" / "siegfried" / "default.sig"
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(home / "default.sig", destination)
+
+
+def capture(
+    out: Path,
+    data_dir: Path,
+    archive_root: Path | None = None,
+) -> list[Path]:
     out.mkdir(parents=True, exist_ok=True)
-    archive_root = data_dir.parent / "family-archive-demo"
+    explicit_archive_root = archive_root is not None
+    archive_root = archive_root or data_dir.parent / "family-archive-demo"
     if archive_root.exists():
+        if explicit_archive_root:
+            raise FileExistsError(f"Refusing to replace existing archive root: {archive_root}")
         shutil.rmtree(archive_root)
+    archive_root.parent.mkdir(parents=True, exist_ok=True)
     if data_dir.exists():
         shutil.rmtree(data_dir)
+    mirror_tools_for_capture(data_dir)
     create_demo_archive(archive_root, seed=42, media=None)
     context = AppContext.create(data_dir)
     archive = context.archive_service.add_archive("Family Archive", archive_root)
@@ -92,9 +121,15 @@ def capture(out: Path, data_dir: Path) -> list[Path]:
     pause(350)
     archive_screen = window.stack.currentWidget()
     assert isinstance(archive_screen, ArchiveScreen)
+    if archive_screen.path.text() != str(archive_root):
+        raise RuntimeError("archive header does not show the requested neutral root")
     saved: list[Path] = []
 
     def grab(name: str, widget: object = window) -> None:
+        visible_text = [label.text() for label in widget.findChildren(QLabel)]
+        visible_text.extend(field.text() for field in widget.findChildren(QLineEdit))
+        if str(Path.home()).casefold() in " ".join(visible_text).casefold():
+            raise RuntimeError(f"{name} contains the local user profile path")
         path = out / name
         save_widget(widget, path)
         saved.append(path)
@@ -115,6 +150,11 @@ def capture(out: Path, data_dir: Path) -> list[Path]:
     grab("history.png")
     window.sidebar.setCurrentRow(3)
     pause(150)
+    settings_text = " ".join(
+        label.text() for label in window.stack.currentWidget().findChildren(QLabel)
+    )
+    if str(Path.home()).casefold() in settings_text.casefold():
+        raise RuntimeError("settings screenshot contains the local user profile path")
     grab("settings.png")
     first = context.file_service.list_files(archive.id, 0, 1)[0]
     dialog = FileDetailDialog(context.file_service.file_detail(first.id or 0), window)
@@ -208,6 +248,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--out", type=Path, default=ROOT / "docs" / "screenshots")
     parser.add_argument("--data-dir", type=Path)
+    parser.add_argument("--archive-root", type=Path)
     args = parser.parse_args()
     temporary: tempfile.TemporaryDirectory[str] | None = None
     if args.data_dir is None:
@@ -218,11 +259,21 @@ def main() -> int:
     app = QApplication.instance() or QApplication(sys.argv)
     assert isinstance(app, QApplication)
     apply_theme(app)
-    saved = capture(args.out, data_dir)
-    for path in saved:
-        print(f"{path.name}\t{path.stat().st_size} bytes")
-    if temporary is not None:
-        temporary.cleanup()
+    owned_archive_root = args.archive_root is not None and not args.archive_root.exists()
+    try:
+        saved = capture(args.out, data_dir, args.archive_root)
+        for path in saved:
+            print(f"{path.name}\t{path.stat().st_size} bytes")
+    finally:
+        if owned_archive_root and args.archive_root is not None and args.archive_root.exists():
+            shutil.rmtree(args.archive_root)
+        if args.archive_root is not None and data_dir.exists():
+            shutil.rmtree(data_dir)
+        welcome_data = data_dir.parent / "welcome-data"
+        if args.archive_root is not None and welcome_data.exists():
+            shutil.rmtree(welcome_data)
+        if temporary is not None:
+            temporary.cleanup()
     return 0
 
 
