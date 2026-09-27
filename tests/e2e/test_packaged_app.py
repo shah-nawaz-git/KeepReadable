@@ -96,6 +96,22 @@ def test_packaged_cli_and_desktop_smoke(tmp_path: Path) -> None:
     assert reported.returncode == 0, reported.stderr
     assert len(list(report_dir.glob("*.html"))) == 1
 
+    licenses = DISTRIBUTION / "LICENSES"
+    assert (DISTRIBUTION / "LICENSE.txt").is_file()
+    assert (DISTRIBUTION / "THIRD_PARTY.md").is_file()
+    assert (licenses / "INDEX.txt").is_file()
+    qt_dirs = list(licenses.glob("Qt-PySide6-*"))
+    assert qt_dirs
+    assert (qt_dirs[0] / "LGPL-3.0-only.txt").is_file()
+    assert (qt_dirs[0] / "GPL-3.0-only.txt").is_file()
+    assert list(licenses.glob("pikepdf-*/third-party-licenses/qpdf.txt"))
+    assert list(licenses.glob("Python-*/LICENSE.txt"))
+    assert any(path.is_dir() and any(path.iterdir()) for path in licenses.glob("pillow-*"))
+    assert any(path.is_dir() and any(path.iterdir()) for path in licenses.glob("reportlab-*"))
+    assert not (DISTRIBUTION / "_internal" / "mypy").exists()
+    executables = {path.name.casefold() for path in DISTRIBUTION.rglob("*.exe")}
+    assert not {"sf.exe", "ffmpeg.exe", "ffprobe.exe"} & executables
+
     process = subprocess.Popen(
         [str(GUI)],
         env=environment,

@@ -7,6 +7,9 @@ Versions are locked in `uv.lock` or `resources/tools.lock.json`. Python licence 
 | Component | Version | Licence | Role | Source | Distribution approach |
 |---|---:|---|---|---|---|
 | PySide6 | 6.11.2 | LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only | Desktop UI and Qt worker/signalling boundary | https://doc.qt.io/qtforpython-6/ | pip dependency; Windows package keeps Qt as shared libraries |
+| PySide6_Essentials | 6.11.2 | LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only | Qt 6 shared libraries used by PySide6 | https://doc.qt.io/qtforpython-6/ | transitive pip dependency; shared libraries in `_internal/PySide6` |
+| PySide6_Addons | 6.11.2 | LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only | Additional Qt modules used by PySide6 | https://doc.qt.io/qtforpython-6/ | transitive pip dependency; shared libraries in `_internal/PySide6` |
+| shiboken6 | 6.11.2 | LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only | Qt for Python binding runtime | https://doc.qt.io/qtforpython-6/ | transitive pip dependency; shared libraries in `_internal/shiboken6` |
 | SQLAlchemy | 2.0.54 | MIT | ORM, sessions, and SQLite queries | https://www.sqlalchemy.org/ | pip dependency bundled by PyInstaller |
 | pydantic | 2.13.5 | MIT | Settings and tool-manifest validation | https://docs.pydantic.dev/ | pip dependency bundled by PyInstaller |
 | pypdf | 6.19.0 | BSD-3-Clause | Independent PDF page reading and warning evidence | https://pypdf.readthedocs.io/ | pip dependency bundled by PyInstaller |
@@ -22,6 +25,18 @@ Versions are locked in `uv.lock` or `resources/tools.lock.json`. Python licence 
 | Jinja2 | 3.1.6 | BSD-3-Clause | Autoescaped HTML audit reports | https://jinja.palletsprojects.com/ | pip dependency bundled by PyInstaller |
 | defusedxml | 0.7.1 | PSF | Bounded OOXML XML parsing | https://github.com/tiran/defusedxml | pip dependency bundled by PyInstaller |
 | lxml | 6.1.3 | BSD-3-Clause | Transitive XML support for pikepdf and Office libraries | https://lxml.de/ | transitive pip dependency bundled by PyInstaller |
+| pydantic-core | 2.46.5 | MIT | pydantic validation engine | https://pypi.org/project/pydantic-core/ | transitive dependency bundled by PyInstaller |
+| annotated-types | 0.8.0 | MIT | pydantic type annotations | https://pypi.org/project/annotated-types/ | transitive dependency bundled by PyInstaller |
+| typing-extensions | 4.16.0 | PSF-2.0 | Backported typing helpers | https://pypi.org/project/typing-extensions/ | transitive dependency bundled by PyInstaller |
+| typing-inspection | 0.4.4 | MIT | pydantic runtime type inspection | https://pypi.org/project/typing-inspection/ | transitive dependency bundled by PyInstaller |
+| MarkupSafe | 3.0.3 | BSD-3-Clause | Jinja2 escaping helper | https://pypi.org/project/MarkupSafe/ | transitive dependency bundled by PyInstaller |
+| et_xmlfile | 2.0.0 | MIT | openpyxl XML helper | https://pypi.org/project/et_xmlfile/ | transitive dependency bundled by PyInstaller |
+| greenlet | 3.5.6 | MIT AND PSF-2.0 | SQLAlchemy coroutine support | https://pypi.org/project/greenlet/ | transitive dependency bundled by PyInstaller |
+| charset-normalizer | 3.5.1 | MIT | reportlab encoding detection | https://pypi.org/project/charset-normalizer/ | transitive dependency bundled by PyInstaller |
+| XlsxWriter | 3.2.9 | BSD-2-Clause | python-pptx chart support | https://pypi.org/project/XlsxWriter/ | transitive dependency bundled by PyInstaller |
+| packaging | 26.3 | Apache-2.0 OR BSD-2-Clause | Version and marker parsing for pikepdf | https://pypi.org/project/packaging/ | transitive dependency bundled by PyInstaller |
+| setuptools | 84.0.0 | MIT | PyInstaller bootstrap support module | https://pypi.org/project/setuptools/ | bundled by PyInstaller hooks |
+| Python runtime | 3.12 | PSF-2.0 | Interpreter and standard library, including bundled OpenSSL, SQLite, libffi, bzip2, and zlib DLLs | https://www.python.org/ | bundled by PyInstaller in `_internal` |
 
 ## External tools
 
@@ -60,6 +75,19 @@ The National Archives, UK publishes DROID signature files at https://www.nationa
 > All content is available under the Open Government Licence v3.0, except where otherwise stated
 
 The signature ZIP is downloaded from the pinned Siegfried release artifact. Only `siegfried/default.sig` is extracted. See The National Archives' terms for the source signature data.
+
+## Distribution notices
+
+The Windows ZIP contains:
+
+- `LICENSE.txt` — the KeepReadable MIT licence text.
+- `THIRD_PARTY.md` — this file.
+- `LICENSES/<component>/` — licence and notice files for each bundled Python distribution, collected from the installed wheel metadata at build time.
+- `LICENSES/Qt-PySide6-<version>/` — the LGPL-3.0 and GPL-3.0 texts plus a NOTICE file. Qt is used under LGPL-3.0-only as dynamically linked shared libraries in `_internal/PySide6` and `_internal/shiboken6`.
+- `LICENSES/Python-<version>/LICENSE.txt` — the CPython licence, which covers the bundled OpenSSL, SQLite, libffi, bzip2, and zlib DLLs.
+- `LICENSES/INDEX.txt` — the generated index of bundled distributions and their licence identifiers.
+
+Siegfried and FFmpeg are downloaded separately after installation and are not covered by these notices; see the External tools section.
 
 ## Development-only dependencies
 

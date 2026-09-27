@@ -33,7 +33,7 @@ COMMON = dict(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=["tkinter", "tests", "pytest", "pytestqt"],
+    excludes=["tkinter", "tests", "pytest", "pytestqt", "mypy", "psutil"],
     noarchive=False,
     optimize=0,
 )
