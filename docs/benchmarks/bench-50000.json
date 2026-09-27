@@ -18,53 +18,53 @@
   },
   "discovery": {
     "files": 50000,
-    "seconds": 3.0044458999764174,
-    "files_per_second": 16642.00377194093,
+    "seconds": 3.249148300033994,
+    "files_per_second": 15388.648157265361,
     "memory": {
-      "sampled_peak_rss": 108634112,
-      "process_peak_wset": 108638208
+      "sampled_peak_rss": 108781568,
+      "process_peak_wset": 108781568
     }
   },
   "quick_cold": {
-    "seconds": 172.88455409999005,
-    "files_per_second": 289.21033611297537,
+    "seconds": 158.64687310002046,
+    "files_per_second": 315.16536710103964,
     "memory": {
-      "sampled_peak_rss": 121987072,
-      "process_peak_wset": 121987072
+      "sampled_peak_rss": 127471616,
+      "process_peak_wset": 127574016
     }
   },
   "quick_incremental": {
-    "seconds": 52.1390116000548,
+    "seconds": 52.473416900029406,
     "memory": {
-      "sampled_peak_rss": 123932672,
-      "process_peak_wset": 123932672
+      "sampled_peak_rss": 130625536,
+      "process_peak_wset": 130789376
     }
   },
   "deep_cold": {
-    "seconds": 111.72704460000386,
-    "megabytes_per_second": 1.860465263475232,
+    "seconds": 109.555183199991,
+    "megabytes_per_second": 1.8973477967683434,
     "bytes_hashed": 217961501,
     "memory": {
-      "sampled_peak_rss": 217763840,
-      "process_peak_wset": 218759168
+      "sampled_peak_rss": 210132992,
+      "process_peak_wset": 217403392
     }
   },
   "deep_incremental": {
-    "seconds": 54.58112389995949,
+    "seconds": 54.971446999988984,
     "memory": {
-      "sampled_peak_rss": 203075584,
-      "process_peak_wset": 218759168
+      "sampled_peak_rss": 208924672,
+      "process_peak_wset": 217534464
     }
   },
   "cancellation": {
-    "total_seconds": 5.06150810001418,
-    "latency_seconds": 0.061508100014179945,
+    "total_seconds": 5.139781200035941,
+    "latency_seconds": 0.13978120003594086,
     "status": "cancelled"
   },
   "resume": {
-    "seconds": 99.65862810000544,
-    "overhead_ratio": 0.8919830329066272,
+    "seconds": 96.75594529998489,
+    "overhead_ratio": 0.8831708594139144,
     "status": "completed"
   },
-  "database_bytes": 153686016
+  "database_bytes": 155287552
 }

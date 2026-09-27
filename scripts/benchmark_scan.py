@@ -128,7 +128,7 @@ def run_benchmark(
     settings = Settings(
         worker_count=min(8, os.cpu_count() or 1),
         persistence_batch_size=500,
-        identification_batch_size=500,
+        identification_batch_size=1000,
     )
     context = AppContext.create(data_root, settings)
     archive = context.archive_service.add_archive(f"Benchmark {count}", archive_root)
