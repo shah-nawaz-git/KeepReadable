@@ -118,20 +118,19 @@ class SettingsScreen(QWidget):
             row_layout.addWidget(pill)
             if name is ToolName.SIEGFRIED and status.detail:
                 signature_lines = [
-                    line.strip()
+                    line.split("pronom:", 1)[1].strip()
                     for line in status.detail.splitlines()
-                    if "default.sig" in line or "pronom:" in line
+                    if "pronom:" in line
                 ]
                 if signature_lines:
-                    signature = QLabel(" · ".join(signature_lines))
+                    signature = QLabel("Signatures · " + " · ".join(signature_lines))
                     signature.setProperty("muted", True)
-                    signature.setWordWrap(True)
+                    signature.setWordWrap(False)
                     row_layout.addWidget(signature)
             self.tools_form.addRow(names[name], row)
             row.show()
             if not status.installed:
                 unavailable.append(name.value)
-        self.tools_form.addRow("veraPDF", QLabel("Not configured (optional)"))
         if unavailable:
             self.tools_form.addRow(
                 "Unavailable checks",
